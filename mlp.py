@@ -13,191 +13,137 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Train and Eval the MNIST network.
+"""Builds the MNIST network.
 
-This version is like fully_connected_feed.py but uses data converted
-to a TFRecords file containing tf.train.Example protocol buffers.
-See tensorflow/g3doc/how_tos/reading_data.md#reading-from-files
-for context.
+Implements the inference/loss/training pattern for model building.
 
-YOU MUST run convert_to_records before running this (but you only need to
-run it once).
+1. inference() - Builds the model as far as is required for running the network
+forward to make predictions.
+2. loss() - Adds to the inference model the layers required to generate loss.
+3. training() - Adds to the loss model the Ops required to generate and
+apply gradients.
+
+This file is used by the various "fully_connected_*.py" files and not meant to
+be run.
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os.path
-import time
-import sys
+import math
 
-import numpy
 import tensorflow as tf
 
-import mnist
+# The MNIST dataset has 10 classes, representing the digits 0 through 9.
+NUM_CLASSES = 196
 
-# Basic model parameters as external flags.
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-flags.DEFINE_float('learning_rate', 0.003, 'Initial learning rate.')
-flags.DEFINE_integer('num_epochs', 20, 'Number of epochs to run trainer.')
-flags.DEFINE_integer('hidden1', 128, 'Number of units in hidden layer 1.')
-flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
-flags.DEFINE_integer('batch_size', 100, 'Batch size.')
-flags.DEFINE_string('train_dir', 'cars_dataset/',
-                    'Directory with the training data.')
-
-# Constants used for dealing with the files, matches convert_to_records.
-TRAIN_FILE = 'train.tfrecords'
-VALIDATION_FILE = 'validation.tfrecords'
+# The MNIST images are always 28x28 pixels.
+IMAGE_PIXELS = 3 * 224 * 224
 
 
-def read_and_decode(filename_queue):
-  reader = tf.TFRecordReader()
-  _, serialized_example = reader.read(filename_queue)
-  features = tf.parse_single_example(
-      serialized_example,
-      # Defaults are not specified since both keys are required.
-      features={
-          'image_raw': tf.FixedLenFeature([], tf.string),
-          'label': tf.FixedLenFeature([], tf.int64),
-      })
-
-  # Convert from a scalar string tensor (whose single string has
-  # length mnist.IMAGE_PIXELS) to a uint8 tensor with shape
-  # [mnist.IMAGE_PIXELS].
-  image = tf.decode_raw(features['image_raw'], tf.float32)
-  image.set_shape([3*224*224])
-
-  # OPTIONAL: Could reshape into a 28x28 image and apply distortions
-  # here.  Since we are not applying any distortions in this
-  # example, and the next step expects the image to be flattened
-  # into a vector, we don't bother.
-
-  # Convert from [0, 255] -> [-0.5, 0.5] floats.
-  image = tf.cast(image, tf.float32) * (1. / 255) - 0.5
-
-  # Convert label from a scalar uint8 tensor to an int32 scalar.
-  label = tf.cast(features['label'], tf.int32)
-
-  return image, label
-
-
-def inputs(train, batch_size, num_epochs):
-  """Reads input data num_epochs times.
+def inference(images, hidden1_units, hidden2_units):
+  """Build the MNIST model up to where it may be used for inference.
 
   Args:
-    train: Selects between the training (True) and validation (False) data.
-    batch_size: Number of examples per returned batch.
-    num_epochs: Number of times to read the input data, or 0/None to
-       train forever.
+    images: Images placeholder, from inputs().
+    hidden1_units: Size of the first hidden layer.
+    hidden2_units: Size of the second hidden layer.
 
   Returns:
-    A tuple (images, labels), where:
-    * images is a float tensor with shape [batch_size, mnist.IMAGE_PIXELS]
-      in the range [-0.5, 0.5].
-    * labels is an int32 tensor with shape [batch_size] with the true label,
-      a number in the range [0, mnist.NUM_CLASSES).
-    Note that an tf.train.QueueRunner is added to the graph, which
-    must be run using e.g. tf.train.start_queue_runners().
+    softmax_linear: Output tensor with the computed logits.
   """
-  if not num_epochs: num_epochs = None
-  filename = os.path.join(FLAGS.train_dir,
-                          TRAIN_FILE if train else VALIDATION_FILE)
-
-  with tf.name_scope('input'):
-    filename_queue = tf.train.string_input_producer(
-        [filename], num_epochs=num_epochs)
-
-    # Even when reading in multiple threads, share the filename
-    # queue.
-    image, label = read_and_decode(filename_queue)
-
-    # Shuffle the examples and collect them into batch_size batches.
-    # (Internally uses a RandomShuffleQueue.)
-    # We run this in two threads to avoid being a bottleneck.
-    images, sparse_labels = tf.train.shuffle_batch(
-        [image, label], batch_size=batch_size, num_threads=2,
-        capacity=1000 + 3 * batch_size,
-        # Ensures a minimum amount of shuffling of examples.
-        min_after_dequeue=1000)
-
-    return images, sparse_labels
-
-
-def run_training():
-  """Train MNIST for a number of steps."""
-
-  # Tell TensorFlow that the model will be built into the default Graph.
-  with tf.Graph().as_default():
-    # Input images and labels.
-    images, labels = inputs(train=True, batch_size=FLAGS.batch_size,
-                            num_epochs=FLAGS.num_epochs)
-    # Build a Graph that computes predictions from the inference model.
-    logits = mnist.inference(images,
-                             FLAGS.hidden1,
-                             FLAGS.hidden2)
-
-    # Add to the Graph the loss calculation.
-    loss = mnist.loss(logits, labels)
-
-    # Add to the Graph operations that train the model.
-    train_op = mnist.training(loss, FLAGS.learning_rate)
-
-    # The op for initializing the variables.
-    init_op = tf.group(tf.initialize_all_variables(),
-                       tf.initialize_local_variables())
-    
-    saver = tf.train.Saver(tf.trainable_variables())
-    # Create a session for running operations in the Graph.
-    sess = tf.Session()
-
-    # Initialize the variables (the trained variables and the
-    # epoch counter).
-    sess.run(init_op)
-
-    # Start input enqueue threads.
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-
-    try:
-      step = 0
-      while not coord.should_stop():
-        start_time = time.time()
-
-        # Run one step of the model.  The return values are
-        # the activations from the `train_op` (which is
-        # discarded) and the `loss` op.  To inspect the values
-        # of your ops or variables, you may include them in
-        # the list passed to sess.run() and the value tensors
-        # will be returned in the tuple from the call.
-        _, loss_value = sess.run([train_op, loss])
-
-        duration = time.time() - start_time
-
-        # Print an overview fairly often.
-        if step % 100 == 0:
-          print('Step %d: loss = %.2f (%.3f sec)' % (step, loss_value,
-                                                    duration))
-          checkpoint_path= os.path.join('checkpoints','model.ckpt')
-          saver.save(sess, checkpoint_path,global_step=step)
-        step += 1
-        #if step == 1201:
-        #  sys.exit(-1)
-    except tf.errors.OutOfRangeError:
-      print('Done training for %d epochs, %d steps.' % (FLAGS.num_epochs, step))
-    finally:
-      # When done, ask the threads to stop.
-      coord.request_stop()
-
-    # Wait for threads to finish.
-    coord.join(threads)
-    sess.close()
+  # Hidden 1
+  with tf.name_scope('hidden1'):
+    weights = tf.Variable(
+        tf.truncated_normal([IMAGE_PIXELS, hidden1_units],
+                            stddev=1.0 / math.sqrt(float(IMAGE_PIXELS))),
+        name='weights')
+    biases = tf.Variable(tf.zeros([hidden1_units]),
+                         name='biases')
+    hidden1 = tf.nn.relu(tf.matmul(images, weights) + biases)
+  # Hidden 2
+  with tf.name_scope('hidden2'):
+    weights = tf.Variable(
+        tf.truncated_normal([hidden1_units, hidden2_units],
+                            stddev=1.0 / math.sqrt(float(hidden1_units))),
+        name='weights')
+    biases = tf.Variable(tf.zeros([hidden2_units]),
+                         name='biases')
+    hidden2 = tf.nn.relu(tf.matmul(hidden1, weights) + biases)
+  # Linear
+  with tf.name_scope('softmax_linear'):
+    weights = tf.Variable(
+        tf.truncated_normal([hidden2_units, NUM_CLASSES],
+                            stddev=1.0 / math.sqrt(float(hidden2_units))),
+        name='weights')
+    biases = tf.Variable(tf.zeros([NUM_CLASSES]),
+                         name='biases')
+    logits = tf.matmul(hidden2, weights) + biases
+  return logits
 
 
-def main():
-  run_training()
+def loss(logits, labels):
+  """Calculates the loss from the logits and the labels.
+
+  Args:
+    logits: Logits tensor, float - [batch_size, NUM_CLASSES].
+    labels: Labels tensor, int32 - [batch_size].
+
+  Returns:
+    loss: Loss tensor of type float.
+  """
+  labels = tf.to_int64(labels)
+  cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+      logits, labels, name='xentropy')
+  loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
+  return loss
 
 
-if __name__ == '__main__':
-  main()
+def training(loss, learning_rate):
+  """Sets up the training Ops.
+
+  Creates a summarizer to track the loss over time in TensorBoard.
+
+  Creates an optimizer and applies the gradients to all trainable variables.
+
+  The Op returned by this function is what must be passed to the
+  `sess.run()` call to cause the model to train.
+
+  Args:
+    loss: Loss tensor, from loss().
+    learning_rate: The learning rate to use for gradient descent.
+
+  Returns:
+    train_op: The Op for training.
+  """
+  # Add a scalar summary for the snapshot loss.
+  tf.scalar_summary(loss.op.name, loss)
+  # Create the gradient descent optimizer with the given learning rate.
+  optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+  # Create a variable to track the global step.
+  global_step = tf.Variable(0, name='global_step', trainable=False)
+  # Use the optimizer to apply the gradients that minimize the loss
+  # (and also increment the global step counter) as a single training step.
+  train_op = optimizer.minimize(loss, global_step=global_step)
+  return train_op
+
+
+def evaluation(logits, labels):
+  """Evaluate the quality of the logits at predicting the label.
+
+  Args:
+    logits: Logits tensor, float - [batch_size, NUM_CLASSES].
+    labels: Labels tensor, int32 - [batch_size], with values in the
+      range [0, NUM_CLASSES).
+
+      Returns:
+    A scalar int32 tensor with the number of examples (out of batch_size)
+    that were predicted correctly.
+  """
+  # For a classifier model, we can use the in_top_k Op.
+  # It returns a bool tensor with shape [batch_size] that is true for
+  # the examples where the label is in the top k (here k=1)
+  # of all logits for that example.
+  correct = tf.nn.in_top_k(logits, labels, 1)
+  # Return the number of true entries.
+  return tf.reduce_sum(tf.cast(correct, tf.int32))

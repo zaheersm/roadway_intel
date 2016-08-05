@@ -15,8 +15,7 @@ import skimage.transform
 
 import tensorflow as tf
 
-# Goal is to pre-process jpegs into numpy arrays of images and labels
-
+# Goal is to pre-process jpegs into TFRecord format
 DIR = 'cars_dataset'
 channels = 3
 height = 224
@@ -90,12 +89,6 @@ def get_im_labels(label_file):
   return images, labels
 
 def split(images, labels):
-  #total = 0
-  #for i in range(196):
-  #  total+=len(labels[labels == i])
-  #  print (i, len(labels[labels == i]))
-  #print (total)
-  #print (labels.shape[0])
   sss = StratifiedShuffleSplit(labels, 1, 0.2)
   for train_index, test_index in sss:
     train_im = images[train_index]
@@ -160,4 +153,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-

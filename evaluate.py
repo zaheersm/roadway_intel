@@ -10,7 +10,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-import mnist
+import mlp 
 
 # Basic model parameters as external flags.
 flags = tf.app.flags
@@ -107,7 +107,7 @@ def evaluate():
     images, labels = inputs(train=False, batch_size=FLAGS.batch_size,
                             num_epochs=FLAGS.num_epochs)
     # Build a Graph that computes predictions from the inference model.
-    logits = mnist.inference(images,
+    logits = mlp.inference(images,
                              FLAGS.hidden1,
                              FLAGS.hidden2)
 
