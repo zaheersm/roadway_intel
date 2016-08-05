@@ -25,7 +25,7 @@ flags.DEFINE_string('checkpoint_dir', 'checkpoints',
                            """Directory where to read model checkpoints.""")
 # Constants used for dealing with the files, matches convert_to_records.
 TRAIN_FILE = 'train.tfrecords'
-VALIDATION_FILE = 'validation.tfrecords'
+VALIDATION_FILE = 'valid.tfrecords'
 
 def read_and_decode(filename_queue):
   reader = tf.TFRecordReader()
@@ -114,15 +114,15 @@ def evaluate():
     top_k_op = tf.nn.in_top_k(logits, labels, 1)
     saver = tf.train.Saver(tf.trainable_variables())
 
-    saver = tf.train.Saver(tf.trainable_variables())
     init = tf.initialize_all_variables()
     # Create a session for running operations in the Graph.
     sess = tf.Session()
     sess.run(init)
-    ''' 
+     
     ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
     if ckpt and ckpt.model_checkpoint_path:
       # Restores from checkpoint
+      print (ckpt.model_checkpoint_path)
       saver.restore(sess, ckpt.model_checkpoint_path)
       # Assuming model_checkpoint_path looks something like:
       #   /my-favorite-path/cifar10_train/model.ckpt-0,
@@ -131,7 +131,7 @@ def evaluate():
     else:
       print('No checkpoint file found')
       return
-    '''
+    
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     step = 0
@@ -145,21 +145,15 @@ def evaluate():
         true_count += np.sum(predictions)
         total_count += 100
         step += 1
-        sys.exit(-1)
     except tf.errors.OutOfRangeError:
       print('Done training for %d epochs, %d steps.' % (FLAGS.num_epochs, step))
     finally:
       # When done, ask the threads to stop.
       coord.request_stop()
-
+      print ('Precision: %f' % (true_count/total_count))
     # Wait for threads to finish.
     coord.join(threads)
     sess.close()
-
-
-
-
-
 
 def main():
   evaluate()

@@ -39,8 +39,8 @@ import mnist
 # Basic model parameters as external flags.
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-flags.DEFINE_integer('num_epochs', 2, 'Number of epochs to run trainer.')
+flags.DEFINE_float('learning_rate', 0.003, 'Initial learning rate.')
+flags.DEFINE_integer('num_epochs', 20, 'Number of epochs to run trainer.')
 flags.DEFINE_integer('hidden1', 128, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
 flags.DEFINE_integer('batch_size', 100, 'Batch size.')
@@ -182,6 +182,8 @@ def run_training():
           checkpoint_path= os.path.join('checkpoints','model.ckpt')
           saver.save(sess, checkpoint_path,global_step=step)
         step += 1
+        #if step == 1201:
+        #  sys.exit(-1)
     except tf.errors.OutOfRangeError:
       print('Done training for %d epochs, %d steps.' % (FLAGS.num_epochs, step))
     finally:
