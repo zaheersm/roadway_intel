@@ -104,7 +104,7 @@ def evaluate():
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Input images and labels.
-    images, labels = inputs(train=True, batch_size=FLAGS.batch_size,
+    images, labels = inputs(train=False, batch_size=FLAGS.batch_size,
                             num_epochs=FLAGS.num_epochs)
     # Build a Graph that computes predictions from the inference model.
     logits = mnist.inference(images,
