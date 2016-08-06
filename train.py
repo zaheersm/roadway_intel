@@ -16,10 +16,12 @@ import input
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-flags.DEFINE_integer('num_epochs', 5, 'Number of epochs to run trainer.')
+flags.DEFINE_integer('num_epochs', None, 'Number of epochs to run trainer.')
 flags.DEFINE_integer('hidden1', 128, 'Number of units in hidden layer 1.')
 flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
 flags.DEFINE_integer('batch_size', 100, 'Batch size.')
+flags.DEFINE_string('checkpoint_dir', 'checkpoints',
+                           """Directory where to read model checkpoints.""")
 
 def run_training():
 
@@ -50,13 +52,20 @@ def run_training():
     # Initialize the variables (the trained variables and the
     # epoch counter).
     sess.run(init_op)
+    step = 0
+    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    if ckpt and ckpt.model_checkpoint_path:
+      print ('Restoring from checkpoint %s' % ckpt.model_checkpoint_path)
+      saver.restore(sess, ckpt.model_checkpoint_path)
+      step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+    else:
+      print ('No checkpoint file found - Starting training from scratch')
 
     # Start input enqueue threads.
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
     try:
-      step = 0
       while not coord.should_stop():
         start_time = time.time()
 
@@ -67,18 +76,17 @@ def run_training():
         # the list passed to sess.run() and the value tensors
         # will be returned in the tuple from the call.
         _, loss_value = sess.run([train_op, loss])
-
         duration = time.time() - start_time
-
+        step += 1
         # Print an overview fairly often.
         if step % 100 == 0:
           print('Step %d: loss = %.2f (%.3f sec)' % (step, loss_value,
                                                     duration))
           checkpoint_path= os.path.join('checkpoints','model.ckpt')
           saver.save(sess, checkpoint_path,global_step=step)
-        step += 1
-        #if step == 1201:
-        #  sys.exit(-1)
+          if loss_value <= 4.0:
+            print ('Loss is now less than 4.0 | Terminating')
+            coord.request_stop()
     except tf.errors.OutOfRangeError:
       print('Done training for %d epochs, %d steps.' % (FLAGS.num_epochs, step))
     finally:
