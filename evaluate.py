@@ -39,8 +39,8 @@ def read_and_decode(filename_queue):
       })
 
   # Convert from a scalar string tensor (whose single string has
-  # length mnist.IMAGE_PIXELS) to a uint8 tensor with shape
-  # [mnist.IMAGE_PIXELS].
+  # length IMAGE_PIXELS) to a uint8 tensor with shape
+  # [IMAGE_PIXELS].
   image = tf.decode_raw(features['image_raw'], tf.float32)
   image.set_shape([3*224*224])
 
@@ -68,10 +68,10 @@ def inputs(train, batch_size, num_epochs):
 
   Returns:
     A tuple (images, labels), where:
-    * images is a float tensor with shape [batch_size, mnist.IMAGE_PIXELS]
+    * images is a float tensor with shape [batch_size, IMAGE_PIXELS]
       in the range [-0.5, 0.5].
     * labels is an int32 tensor with shape [batch_size] with the true label,
-      a number in the range [0, mnist.NUM_CLASSES).
+      a number in the range [0, NUM_CLASSES).
     Note that an tf.train.QueueRunner is added to the graph, which
     must be run using e.g. tf.train.start_queue_runners().
   """
@@ -99,7 +99,6 @@ def inputs(train, batch_size, num_epochs):
     return images, sparse_labels
 
 def evaluate():
-  """Train MNIST for a number of steps."""
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
