@@ -13,34 +13,32 @@ import mlp
 import input
 import evaluate
 
-# Basic model parameters as external flags.
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-flags.DEFINE_integer('num_epochs', None, 'Number of epochs to run trainer.')
-flags.DEFINE_integer('hidden1', 128, 'Number of units in hidden layer 1.')
-flags.DEFINE_integer('hidden2', 32, 'Number of units in hidden layer 2.')
-flags.DEFINE_integer('batch_size', 100, 'Batch size.')
-flags.DEFINE_string('checkpoint_dir', 'checkpoints',
-                           """Directory where to read model checkpoints.""")
+
+# Defining basic model parameters
+learning_rate = 0.01
+num_epochs = None
+hidden1 = 128
+hidden2 = 32
+batch_size = 100
+checkpoint_dir = 'checkpoints'
 
 def run_training():
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Input images and labels.
-    images, labels = input.inputs(train=True, batch_size=FLAGS.batch_size,
-                            num_epochs=FLAGS.num_epochs)
+    images, labels = input.inputs(train=True, batch_size=batch_size,
+                            num_epochs=num_epochs)
     # Build a Graph that computes predictions from the inference model.
     logits = mlp.inference(images,
-                             FLAGS.hidden1,
-                             FLAGS.hidden2)
+                             hidden1,
+                             hidden2)
 
     # Add to the Graph the loss calculation.
     loss = mlp.loss(logits, labels)
 
     # Add to the Graph operations that train the model.
-    train_op = mlp.training(loss, FLAGS.learning_rate)
+    train_op = mlp.training(loss, learning_rate)
 
     # The op for initializing the variables.
     init_op = tf.group(tf.initialize_all_variables(),
@@ -57,7 +55,7 @@ def run_training():
     epoch = 0
 
 
-    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
     if ckpt and ckpt.model_checkpoint_path:
       print ('Restoring from checkpoint %s' % ckpt.model_checkpoint_path)
       saver.restore(sess, ckpt.model_checkpoint_path)
@@ -119,7 +117,7 @@ def run_training():
             
     
     except tf.errors.OutOfRangeError:
-      print('Done training for %d epochs, %d steps.' % (FLAGS.num_epochs, step))
+      print('Done training for %d epochs, %d steps.' % (num_epochs, step))
     finally:
       # When done, ask the threads to stop.
       coord.request_stop()

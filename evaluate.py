@@ -12,10 +12,15 @@ import tensorflow as tf
 
 import mlp
 import input
-flags = tf.app.flags
-FLAGS = flags.FLAGS
 
-# Basic model parameters as external flags.
+# Defining basic model parameters
+learning_rate = 0.01
+num_epochs = None
+hidden1 = 128
+hidden2 = 32
+batch_size = 100
+checkpoint_dir = 'checkpoints'
+
 def eval():
 
   # Tell TensorFlow that the model will be built into the default Graph.
@@ -23,12 +28,12 @@ def eval():
     
 
     # Input images and labels.
-    images, labels = input.inputs(train=False, batch_size=FLAGS.batch_size,
+    images, labels = input.inputs(train=False, batch_size=batch_size,
                             num_epochs=1)
     # Build a Graph that computes predictions from the inference model.
     logits = mlp.inference(images,
-                             FLAGS.hidden1,
-                             FLAGS.hidden2)
+                             hidden1,
+                             hidden2)
 
     # Add to the Graph the loss calculation.
     loss = mlp.loss(logits, labels)
@@ -42,7 +47,7 @@ def eval():
     sess = tf.Session()
     sess.run(init)
      
-    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
     if ckpt and ckpt.model_checkpoint_path:
       # Restores from checkpoint
       print ('Evaluating: %s' % ckpt.model_checkpoint_path)

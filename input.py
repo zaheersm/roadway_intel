@@ -5,11 +5,7 @@ from __future__ import print_function
 import os.path
 import tensorflow as tf
 
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-flags.DEFINE_string('train_dir', 'cars_dataset/',
-                    'Directory with the training data.')
-
+train_dir = 'cars_dataset'
 TRAIN_FILE = 'train.tfrecords'
 VALIDATION_FILE = 'valid.tfrecords'
 
@@ -61,7 +57,7 @@ def inputs(train, batch_size, num_epochs):
     must be run using e.g. tf.train.start_queue_runners().
   """
   if not num_epochs: num_epochs = None
-  filename = os.path.join(FLAGS.train_dir,
+  filename = os.path.join(train_dir,
                           TRAIN_FILE if train else VALIDATION_FILE)
 
   with tf.name_scope('input'):
