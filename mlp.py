@@ -16,8 +16,8 @@ import math
 
 import tensorflow as tf
 
-# The Stanford Cars dataset has 196 classes, representing the digits 0 through 9.
-NUM_CLASSES = 196
+# We're going to classify 3 car-types (i.e. SUV:0, Sedan:1, Hatchback:2)
+NUM_CLASSES = 3
 
 # Each image is of size 224 x 224 with 3 channels (RGB)
 IMAGE_PIXELS = 3 * 224 * 224

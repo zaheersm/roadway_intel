@@ -77,7 +77,7 @@ def run_training():
     test_score = 0.
     done_looping = False
     epoch = 0
-    n_train_batches = 65 # We have 6500 training examples and batchsize of 100
+    n_train_batches = 100 # We have 6500 training examples and batchsize of 100
 
     try:
       while not done_looping and not coord.should_stop():
@@ -95,8 +95,7 @@ def run_training():
           _, loss_value = sess.run([train_op, loss])
           duration = time.time() - start_time
           step += 1
-          # Print an overview fairly often.
-          if step % 65 == 0:
+          if step % 100 == 0:
             print('Epoch %d | Step %d: loss = %.2f (%.3f sec)' % (epoch,
                                                     step, 
                                                     loss_value,
@@ -109,16 +108,15 @@ def run_training():
               if val_loss < best_validation_loss * improvement_threshold:
                 patience = max(patience, step*patience_increase)
                 best_validation_loss = val_loss
-                saver.save(sess, os.path.join('checkpoints', 'best_model'))
+                saver.save(sess, os.path.join('checkpoints', 'best_model'), 
+                                              global_step=step)
           if patience <= step:
             done_looping = True
-            break  
-
-            
-    
+            break
     except tf.errors.OutOfRangeError:
-      print('Done training for %d epochs, %d steps.' % (num_epochs, step))
+      print ('tf.errors.OutOfRangeError')
     finally:
+      print('Done training for %d epochs, %d steps.' % (epoch, step))
       # When done, ask the threads to stop.
       coord.request_stop()
 
