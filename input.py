@@ -5,10 +5,10 @@ from __future__ import print_function
 import os.path
 import tensorflow as tf
 
-train_dir = 'cars_dataset'
+train_dir = 'data/car_type'
 TRAIN_FILE = 'train.tfrecords'
 VALIDATION_FILE = 'valid.tfrecords'
-
+TEST_FILE = 'test.tfrecords'
 def read_and_decode(filename_queue):
   reader = tf.TFRecordReader()
   _, serialized_example = reader.read(filename_queue)

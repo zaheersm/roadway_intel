@@ -79,7 +79,19 @@ def loss(logits, labels):
   labels = tf.to_int64(labels)
   cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
       logits, labels, name='xentropy')
+
   loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
+
+  # Regularizing weights
+  fc1_weights = tf.get_default_graph().get_tensor_by_name('hidden1/weights:0')
+  fc2_weights = tf.get_default_graph().get_tensor_by_name('hidden2/weights:0')
+  soft_weights =  \
+        tf.get_default_graph().get_tensor_by_name('softmax_linear/weights:0')
+
+  regularizers  = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc2_weights) +
+                  tf.nn.l2_loss(soft_weights))
+  loss += 5e-4 * regularizers
+
   return loss
 
 
