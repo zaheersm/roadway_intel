@@ -23,7 +23,8 @@ def read_and_decode(filename_queue):
   # length IMAGE_PIXELS) to a tf.float32 tensor with shape
   # [IMAGE_PIXELS].
   image = tf.decode_raw(features['image_raw'], tf.float32)
-  image.set_shape([3*224*224])
+  image = tf.reshape(image, tf.pack([224, 224, 3]))
+  image.set_shape([224, 224, 3])
 
   # OPTIONAL: Could reshape into a 3x224x224 image and apply distortions
   # here.  Since we are not applying any distortions, 
@@ -35,7 +36,6 @@ def read_and_decode(filename_queue):
 
   # Convert label from a scalar uint8 tensor to an int32 scalar.
   label = tf.cast(features['label'], tf.int32)
-
   return image, label
 
 def inputs(train, batch_size, num_epochs):

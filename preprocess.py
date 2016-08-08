@@ -144,9 +144,6 @@ def prep_image(im):
   h, w, _ = im.shape
   im = im[h//2-112:h//2+112, w//2-112:w//2+112]
     
-  # Shuffle axes so we have channels*height*width
-  im = np.swapaxes(np.swapaxes(im, 1, 2), 0, 1)
-   
   return im.astype('float32')
 
 def squash (ar0, ar1, ar2):
@@ -199,7 +196,7 @@ def process_TFR(images, labels, name):
     im = np.asarray(Image.open(os.path.join(DIR, images[index])))
     assert len(im.shape) == 3
     im = prep_image(im)
-    rows, cols, depth = im.shape[1], im.shape[2], im.shape[0]
+    rows, cols, depth = im.shape[0], im.shape[1], im.shape[2]
     if depth != 3:
       scraped+=1
       continue #Skip the example if it doesn't have 3 channels
