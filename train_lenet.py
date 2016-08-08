@@ -15,9 +15,9 @@ import evaluate
 
 
 # Defining basic model parameters
-learning_rate = 0.01
+learning_rate = 0.001
 num_epochs = None
-batch_size = 20
+batch_size = 30
 checkpoint_dir = 'checkpoints'
 
 def run_training():
@@ -48,7 +48,7 @@ def run_training():
     step = 0
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-
+    print ('Training begins..')
     try:
       while not coord.should_stop():
         start_time = time.time()
@@ -56,10 +56,11 @@ def run_training():
         _, loss_value = sess.run([train_op, loss])
         duration = time.time() - start_time
         step += 1
-        if step % 100 == 0:
+        if step % 20 == 0:
           print('Step %d: loss = %.2f (%.3f sec)' % (step, 
                                                     loss_value,
                                                     duration))
+        if step % 50 == 0:
           checkpoint_path = os.path.join('checkpoints','model.ckpt')
           saver.save(sess, checkpoint_path,global_step=step)
     except tf.errors.OutOfRangeError:

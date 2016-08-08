@@ -13,12 +13,12 @@ import tensorflow as tf
 
 import input
 
-batch_size = 20
+batch_size = 30
 
 IMAGE_SIZE = (224, 224, 3)
 NUM_CLASSES = 3
 
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.001
 
 def _variable_on_cpu(name, shape, initializer):
   with tf.device('/cpu:0'):
