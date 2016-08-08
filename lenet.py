@@ -13,7 +13,7 @@ import tensorflow as tf
 
 import input
 
-batch_size = 100
+batch_size = 20
 
 IMAGE_SIZE = (224, 224, 3)
 NUM_CLASSES = 3
