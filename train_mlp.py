@@ -11,7 +11,7 @@ import tensorflow as tf
 
 import mlp
 import input
-import evaluate
+import evaluate_mlp
 
 
 # Defining basic model parameters
@@ -107,7 +107,7 @@ def run_training():
                                                     duration))
             checkpoint_path= os.path.join('checkpoints','model.ckpt')
             saver.save(sess, checkpoint_path,global_step=step)
-            val_loss = evaluate.eval()
+            val_loss = evaluate_mlp.eval()
             print ('Validation loss = %.2f' % val_loss)            
             if val_loss < best_validation_loss:
               if val_loss < best_validation_loss * improvement_threshold:

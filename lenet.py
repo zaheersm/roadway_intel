@@ -18,7 +18,7 @@ batch_size = 30
 IMAGE_SIZE = (224, 224, 3)
 NUM_CLASSES = 3
 
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.01
 
 def _variable_with_weight_decay(name, shape, stddev, wd):
   var = tf.get_variable(name=name, shape=shape,
