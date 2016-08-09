@@ -29,7 +29,11 @@ def run_training():
     # Input images and labels.
     images, labels = input.inputs(train=True, batch_size=batch_size,
                             num_epochs=num_epochs)
+    # images have the shape: batch_size x height x width x depth
+    # flattening out images to be fed into MLP which expects images
+    # with shape: batch_size x image_pixels
     # Build a Graph that computes predictions from the inference model.
+    images = tf.reshape(images, [batch_size, -1])
     logits = mlp.inference(images,
                              hidden1,
                              hidden2)
@@ -46,7 +50,8 @@ def run_training():
     
     saver = tf.train.Saver(tf.trainable_variables())
     # Create a session for running operations in the Graph.
-    sess = tf.Session()
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
+                                            log_device_placement=True))
 
     # Initialize the variables (the trained variables and the
     # epoch counter).

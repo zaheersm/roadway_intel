@@ -30,6 +30,7 @@ def eval():
     # Input images and labels.
     images, labels = input.inputs(train=False, batch_size=batch_size,
                             num_epochs=1)
+    images = tf.reshape(images, [batch_size, -1])
     # Build a Graph that computes predictions from the inference model.
     logits = mlp.inference(images,
                              hidden1,
