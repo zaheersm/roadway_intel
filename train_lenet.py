@@ -25,24 +25,26 @@ def run_training():
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Input images and labels.
-    images, labels = input.inputs(train=True, batch_size=batch_size,
-                            num_epochs=1)
-    # Build a Graph that computes predictions from the inference model.
-    logits = lenet.inference(images)
+    with tf.device('/gpu:0'):
+      images, labels = input.inputs(train=True, batch_size=batch_size,
+                              num_epochs=1)
+      # Build a Graph that computes predictions from the inference model.
+      logits = lenet.inference(images)
 
-    # Add to the Graph the loss calculation.
-    loss = lenet.loss(logits, labels)
+      # Add to the Graph the loss calculation.
+      loss = lenet.loss(logits, labels)
 
-    # Add to the Graph operations that train the model.
-    train_op = lenet.train(loss, learning_rate)
+      # Add to the Graph operations that train the model.
+      train_op = lenet.train(loss, learning_rate)
 
-    # The op for initializing the variables.
-    init_op = tf.group(tf.initialize_all_variables(),
-                       tf.initialize_local_variables())
+      # The op for initializing the variables.
+      init_op = tf.group(tf.initialize_all_variables(),
+                         tf.initialize_local_variables())
     
     saver = tf.train.Saver(tf.trainable_variables())
     # Create a session for running operations in the Graph.
-    sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
+                                            log_device_placement=True))
 
     sess.run(init_op)
     step = 0

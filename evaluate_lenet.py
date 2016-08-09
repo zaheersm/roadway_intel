@@ -26,21 +26,23 @@ def eval():
     
 
     # Input images and labels.
-    images, labels = input.inputs(train=False, batch_size=batch_size,
-                            num_epochs=1)
-    # Build a Graph that computes predictions from the inference model.
-    logits = lenet.inference(images)
+    with tf.device('/gpu:1'):
+      images, labels = input.inputs(train=False, batch_size=batch_size,
+                              num_epochs=1)
+      # Build a Graph that computes predictions from the inference model.
+      logits = lenet.inference(images)
 
-    # Add to the Graph the loss calculation.
-    loss = lenet.loss(logits, labels)
-    top_k_op = tf.nn.in_top_k(logits, labels, 1)
+      # Add to the Graph the loss calculation.
+      loss = lenet.loss(logits, labels)
+      top_k_op = tf.nn.in_top_k(logits, labels, 1)
     
     # To restore the latest checkpoint for evaluation
     saver = tf.train.Saver(tf.trainable_variables())
 
     init = tf.initialize_all_variables()
     # Create a session for running operations in the Graph.
-    sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, 
+                                            log_device_placement=True))
     sess.run(init)
      
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
@@ -68,7 +70,7 @@ def eval():
 
         predictions, loss_value = sess.run([top_k_op, loss])
         true_count += np.sum(predictions)
-        total_count += 30
+        total_count += batch_size
         step += 1
         total_loss+=loss_value
     except tf.errors.OutOfRangeError:
@@ -84,8 +86,8 @@ def eval():
     return total_loss/step
 
 def main():
-  eval()
-
+  loss = eval()
+  print ('Eval loss: %.2f' % loss)
 
 if __name__ == '__main__':
   main()
