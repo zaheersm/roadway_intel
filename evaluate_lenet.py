@@ -1,3 +1,4 @@
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -11,80 +12,81 @@ import tensorflow as tf
 
 import lenet
 import input
-import evaluate
-
 
 # Defining basic model parameters
-learning_rate = 0.001
+learning_rate = 0.01
 num_epochs = None
 batch_size = 30
 checkpoint_dir = 'checkpoints'
 
-def run_training():
+def eval():
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
+    
+
     # Input images and labels.
-    images, labels = input.inputs(train=True, batch_size=batch_size,
+    images, labels = input.inputs(train=False, batch_size=batch_size,
                             num_epochs=1)
     # Build a Graph that computes predictions from the inference model.
     logits = lenet.inference(images)
 
     # Add to the Graph the loss calculation.
     loss = lenet.loss(logits, labels)
-
-    # Add to the Graph operations that train the model.
-    train_op = lenet.train(loss, learning_rate)
-
-    # The op for initializing the variables.
-    init_op = tf.group(tf.initialize_all_variables(),
-                       tf.initialize_local_variables())
+    top_k_op = tf.nn.in_top_k(logits, labels, 1)
     
+    # To restore the latest checkpoint for evaluation
     saver = tf.train.Saver(tf.trainable_variables())
+
+    init = tf.initialize_all_variables()
     # Create a session for running operations in the Graph.
     sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
-
-    sess.run(init_op)
-    step = 0
-
+    sess.run(init)
+     
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
     if ckpt and ckpt.model_checkpoint_path:
-      print ('Restoring from checkpoint %s' % ckpt.model_checkpoint_path)
+      # Restores from checkpoint
+      print ('Evaluating: %s' % ckpt.model_checkpoint_path)
       saver.restore(sess, ckpt.model_checkpoint_path)
-      step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+      # Assuming model_checkpoint_path looks something like:
+      #   /my-favorite-path/cifar10_train/model.ckpt-0,
+      # extract global_step from it.
+      global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
     else:
-      print ('No checkpoint file found - Starting training from scratch')
-
+      print('No checkpoint file found')
+      return
+    
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    print ('Training begins..')
+    step = 0
+    true_count = 0
+    total_count = 0
+    total_loss = 0.
     try:
+      step = 0
       while not coord.should_stop():
-        start_time = time.time()
 
-        _, loss_value = sess.run([train_op, loss])
-        duration = time.time() - start_time
+        predictions, loss_value = sess.run([top_k_op, loss])
+        true_count += np.sum(predictions)
+        total_count += 30
         step += 1
-        if step % 20 == 0:
-          print('Step %d: loss = %.2f (%.3f sec)' % (step, 
-                                                    loss_value,
-                                                    duration))
-        if step % 50 == 0:
-          checkpoint_path = os.path.join('checkpoints','model.ckpt')
-          saver.save(sess, checkpoint_path,global_step=step)
+        total_loss+=loss_value
     except tf.errors.OutOfRangeError:
-      print ('tf.errors.OutOfRangeError')
+      print('Evaluation Complete ')
     finally:
-      print('Done training for %d steps.' % (step))
       # When done, ask the threads to stop.
       coord.request_stop()
-
+      precision = true_count/total_count
+      print ('Precision: %f Steps: %d' % (precision, step))
     # Wait for threads to finish.
     coord.join(threads)
     sess.close()
+    return total_loss/step
 
 def main():
-  run_training()
+  eval()
+
 
 if __name__ == '__main__':
   main()
+
