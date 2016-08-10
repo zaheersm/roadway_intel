@@ -34,20 +34,14 @@ images = 'data/image'
 labels = 'data/label'
 attributes = 'data/misc/attributes.txt'
 
-path_suv = '2'
-path_sedan = '3'
-path_hatchback = '4'
-
-
-
-"""
-  There are total 1716 model ids which are not contiguous
-  (i.e. model ids span from 1 to 2004)
-  Returns two dictionaries:
-  1. model_id (1-2004) -> contiguous model ids (0 - 1715)
-  2. contiguous model ids to car-type (e.g. SUV, Sedan, hatchback etc.)
-"""
 def get_mapping():
+  """
+    There are total 1716 model ids which are not contiguous
+    (i.e. model ids span from 1 to 2004)
+    Returns two dictionaries:
+    1. model_id (1-2004) -> contiguous model ids (0 - 1715)
+    2. contiguous model ids to car-type (e.g. SUV, Sedan, hatchback etc.)
+  """
   unknown = 0
   f = open(attributes)
   content = f.read().split('\n')
@@ -146,10 +140,10 @@ def prep_image(im):
     
   return im.astype('float32')
 
-def squash (ar0, ar1, ar2):
+def squash_deprecated (ar0, ar1, ar2):
   l0, l1, l2 = len(ar0), len(ar1), len(ar2)
   n = l0 + l1 + l2
-  im = np.ndarray((n,), dtype = np.object)
+  im = np.ndarray((n,), dtype=np.object)
   label = np.ndarray((n,), dtype = np.uint8)
   
   im[0: l0] = ar0[:]
@@ -161,12 +155,26 @@ def squash (ar0, ar1, ar2):
 
   return im, label
 
+def squash(class_images):
+  l = [0] * len(class_images)
+  n = 0
+  for idx, images in enumerate(class_images):
+    l[idx] = len(images)
+    n+=l[idx]
+  im = np.ndarray((n,), dtype=np.object)
+  label = np.ndarray((n,), dtype=np.uint8)
+
+  now = 0
+  for idx in range (len(class_images)):
+    im[now: now + l[idx]] = class_images[idx][:]
+    label[now: now + l[idx]] = idx
+    now = now + l[idx]
+  return im, label
+
 def shuffle(im, label):
   assert len(im) == len(label)
   p = np.random.permutation(len(im))
   return im[p], label[p]
-
-lpath = {0: '2', 1:'3', 2:'4'}
 
 def process_TFR(images, labels, name):
   def _int64_feature(value):
@@ -191,7 +199,7 @@ def process_TFR(images, labels, name):
   scraped = 0
   for index in range(num_examples):
     l = labels[index]
-    DIR = os.path.join(root, lpath[l])
+    DIR = os.path.join(root, str(l + 1))
 
     im = np.asarray(Image.open(os.path.join(DIR, images[index])))
     assert len(im.shape) == 3
@@ -219,32 +227,31 @@ def process_TFR(images, labels, name):
 
 def main():
   # Copying data from data/images to data/car_types/ as per the car types
-  copy()
-  
-  suv = (os.listdir(os.path.join(root, path_suv)))
-  sedan = (os.listdir(os.path.join(root, path_sedan)))
-  hatchback = (os.listdir(os.path.join(root, path_hatchback)))
+  #copy()
 
-  suv = to_np(suv)
-  sedan = to_np(sedan)
-  hatchback = to_np(hatchback)
+  no_classes = 12
+  class_images = [None] * no_classes
+  class_images_train = [None] * no_classes
+  class_images_valid = [None] * no_classes
+  class_images_test = [None] * no_classes
 
-  suv_train, suv_valid, suv_test = split(suv)
-  sedan_train, sedan_valid, sedan_test = split(sedan)
-  hatchback_train, hatchback_valid, hatchback_test = split(hatchback)
+  for i in range (no_classes):
+    class_images[i] = os.listdir(os.path.join(root, str(i+1)))
+    class_images[i] = to_np(class_images[i])
+    class_images_train[i], class_images_valid[i], class_images_test[i] = \
+                                                      split(class_images[i])
 
-  # Squashing suv, sedan and hatchback into training/valid and test sets
-  train_im, train_label = squash(suv_train, sedan_train, hatchback_train)
-  valid_im, valid_label = squash(suv_valid, sedan_valid, hatchback_valid)
-  test_im, test_label = squash(suv_test, sedan_test, hatchback_test)
+  train_im, train_label = squash(class_images_train)
+  valid_im, valid_label = squash(class_images_valid)
+  test_im, test_label = squash(class_images_test)
 
   train_im, train_label = shuffle (train_im, train_label)
   valid_im, valid_label = shuffle (valid_im, valid_label)
   test_im, test_label = shuffle (test_im, test_label)
-  process_TFR(train_im, train_label, 'train')
-  process_TFR(valid_im, valid_label, 'valid')
-  process_TFR(test_im, test_label, 'test')
 
+  process_TFR(train_im, train_label, 'train_12')
+  process_TFR(valid_im, valid_label, 'valid_12')
+  process_TFR(test_im, test_label, 'test_12')
 
 if __name__ == "__main__":
   main()
