@@ -6,9 +6,9 @@ import os.path
 import tensorflow as tf
 
 train_dir = 'data/car_type'
-TRAIN_FILE = 'train.tfrecords'
-VALIDATION_FILE = 'valid.tfrecords'
-TEST_FILE = 'test.tfrecords'
+TRAIN_FILE = 'train_12.tfrecords'
+VALIDATION_FILE = 'valid_12.tfrecords'
+TEST_FILE = 'test_12.tfrecords'
 def read_and_decode(filename_queue):
   reader = tf.TFRecordReader()
   _, serialized_example = reader.read(filename_queue)
