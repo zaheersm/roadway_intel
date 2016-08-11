@@ -13,9 +13,6 @@ import tensorflow as tf
 import lenet
 import input
 
-# Defining basic model parameters
-learning_rate = 0.01
-num_epochs = None
 batch_size = 30
 checkpoint_dir = 'checkpoints'
 
