@@ -34,6 +34,8 @@ images = 'data/image'
 labels = 'data/label'
 attributes = 'data/misc/attributes.txt'
 
+no_classes = 12
+
 def get_mapping():
   """
     There are total 1716 model ids which are not contiguous
@@ -140,21 +142,6 @@ def prep_image(im):
     
   return im.astype('float32')
 
-def squash_deprecated (ar0, ar1, ar2):
-  l0, l1, l2 = len(ar0), len(ar1), len(ar2)
-  n = l0 + l1 + l2
-  im = np.ndarray((n,), dtype=np.object)
-  label = np.ndarray((n,), dtype = np.uint8)
-  
-  im[0: l0] = ar0[:]
-  label[0: l0] = 0
-  im[l0: l0+l1] = ar1[:]
-  label[l0: l0+l1] = 1
-  im[l0+l1: l0+l1+l2] = ar2[:]
-  label[l0+l1: l0+l1+l2] = 2
-
-  return im, label
-
 def squash(class_images):
   l = [0] * len(class_images)
   n = 0
@@ -227,9 +214,8 @@ def process_TFR(images, labels, name):
 
 def main():
   # Copying data from data/images to data/car_types/ as per the car types
-  #copy()
+  copy()
 
-  no_classes = 12
   class_images = [None] * no_classes
   class_images_train = [None] * no_classes
   class_images_valid = [None] * no_classes
