@@ -13,7 +13,7 @@ import tensorflow as tf
 
 import input
 
-batch_size = 30
+batch_size = 20
 
 IMAGE_SIZE = (224, 224, 3)
 NUM_CLASSES = 12
@@ -99,8 +99,32 @@ def loss(logits, labels):
 
   return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
-def train(loss, learning_rate):
-  optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+def train(loss, learning_rate, optimizer='sgd'):
+  """
+
+  Creates training operation to optimize the loss function
+
+  Args:
+    loss: loss tensor created by loss(..) function
+    learning_rate: learning rate to be used for minimization
+    optimizer: Optimizer to be used. Currently supported optimizers include
+    Stochastic Gradient Descent ('sgd') and Adam ('adam')
+  Returns:
+    train_op: op for training
+  """
+  if optimizer == 'adam':
+    print ('Using Adam Optimizer with LR %.2f' % learning_rate)
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
+                                        beta1=0.9,
+                                        beta2=0.999,
+                                        epsilon=1e-08,
+                                        name='Adam')
+  elif optimizer == 'sgd':
+    print ('Using SGD Optimizer with LR %.2f' % learning_rate)
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate,
+                                                  name='SGD')
+  else:
+    raise ValueError('Invalid argument for optimizer')
   global_step = tf.Variable(0, name='global_step', trainable=False)
   train_op = optimizer.minimize(loss, global_step=global_step)
   return train_op

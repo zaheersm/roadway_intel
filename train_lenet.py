@@ -13,9 +13,9 @@ import lenet
 import input
 
 # Defining basic model parameters
-learning_rate = 0.0003
+learning_rate = 0.0001
 num_epochs = 1
-batch_size = 30
+batch_size = 20
 checkpoint_dir = 'checkpoints'
 
 def run_training():
@@ -23,7 +23,7 @@ def run_training():
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Input images and labels.
-    with tf.device('/gpu:0'):
+    with tf.device('/gpu:2'):
       images, labels = input.inputs(train=True, batch_size=batch_size,
                               num_epochs=num_epochs)
       # Build a Graph that computes predictions from the inference model.
@@ -33,7 +33,7 @@ def run_training():
       loss = lenet.loss(logits, labels)
 
       # Add to the Graph operations that train the model.
-      train_op = lenet.train(loss, learning_rate)
+      train_op = lenet.train(loss, learning_rate, 'adam')
 
       # The op for initializing the variables.
       init_op = tf.group(tf.initialize_all_variables(),

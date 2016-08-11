@@ -13,7 +13,7 @@ import tensorflow as tf
 import lenet
 import input
 
-batch_size = 30
+batch_size = 20
 checkpoint_dir = 'checkpoints'
 
 def eval():
