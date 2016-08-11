@@ -15,6 +15,16 @@ import input
 
 batch_size = 20
 checkpoint_dir = 'checkpoints'
+no_classes = 12
+total_type = [0] * no_classes
+correct_type = [0] * no_classes
+
+def analyze(predictions, labels):
+
+  for idx in range(len(labels)):
+    total_type[labels[idx]]+=1
+    if predictions[idx] == True:
+      correct_type[labels[idx]]+=1
 
 def eval():
 
@@ -63,19 +73,25 @@ def eval():
     try:
       step = 0
       while not coord.should_stop():
-
-        predictions, loss_value = sess.run([top_k_op, loss])
+        predictions, loss_value, labels_value = sess.run([top_k_op, loss, labels])
+        analyze(predictions, labels_value)
         true_count += np.sum(predictions)
         total_count += batch_size
         step += 1
         total_loss+=loss_value
     except tf.errors.OutOfRangeError:
       print('Evaluation Complete ')
+    except Exception as e:
+      print (str(e))
     finally:
       # When done, ask the threads to stop.
       coord.request_stop()
       precision = true_count/total_count
       print ('Precision: %f Steps: %d' % (precision, step))
+      for idx in range(no_classes):
+        print ("%d : %d/%d | %.3f" % (idx, correct_type[idx], total_type[idx],
+                                correct_type[idx]/total_type[idx]))
+
     # Wait for threads to finish.
     coord.join(threads)
     sess.close()
