@@ -9,6 +9,22 @@ data_preparation.py does the following key steps:
 
 Pre-requisites: CompCars dataset uzipped at data/
 
+Misc Information:
+
+Category  # Images
+1          6149
+2          21752
+3          32274
+4          16573
+5          4729
+6          2473
+7          1215
+8          2134
+9          2473
+10         6023
+11         937
+12         1047
+
 This script would take ~1-1.5hrs to complete so you might want to 
 grab a cup of coffee
 """
@@ -35,6 +51,7 @@ labels = 'data/label'
 attributes = 'data/misc/attributes.txt'
 
 no_classes = 12
+OVERSAMPLING = False
 
 def get_mapping():
   """
@@ -109,6 +126,23 @@ def to_np (l):
   for i in range(len(l)):
     ary[i] = l[i]
   return ary
+
+def to_np_oversample(l, total_samples):
+  """
+  Oversampling to tackle the class-imbalanced problem
+  Args:
+  l: list of image files
+  total_samples: the total number of samples needed
+
+  Returns:
+  ary: A vector of len total_samples with image files
+  """
+  ary = np.ndarray((total_samples), dtype=np.object)
+  for idx in range(total_samples):
+    # Cycle over l to oversample images if need be
+    ary[idx] = l[idx % len(l)]
+  return ary
+
 
 def split(arr):
   N = len(arr)
@@ -214,19 +248,26 @@ def process_TFR(images, labels, name):
 
 def main():
   # Copying data from data/images to data/car_types/ as per the car types
-  copy()
+  #copy()
 
   class_images = [None] * no_classes
   class_images_train = [None] * no_classes
   class_images_valid = [None] * no_classes
   class_images_test = [None] * no_classes
 
-  for i in range (no_classes):
-    class_images[i] = os.listdir(os.path.join(root, str(i+1)))
-    class_images[i] = to_np(class_images[i])
-    class_images_train[i], class_images_valid[i], class_images_test[i] = \
-                                                      split(class_images[i])
+  max_samples = 0
+  for idx in range (no_classes):
+    class_images[idx] = os.listdir(os.path.join(root, str(idx+1)))
+    if len(class_images[idx]) > max_samples:
+      max_samples = len(class_images[idx])
 
+  for idx in range(no_classes):
+    if OVERSAMPLING:
+      class_images[idx] = to_np_oversample(class_images[idx], max_samples)
+    else:
+      class_images[idx] = to_np(class_images[idx])
+    class_images_train[idx], class_images_valid[idx], class_images_test[idx]=\
+                                                      split(class_images[idx])
   train_im, train_label = squash(class_images_train)
   valid_im, valid_label = squash(class_images_valid)
   test_im, test_label = squash(class_images_test)
@@ -235,9 +276,9 @@ def main():
   valid_im, valid_label = shuffle (valid_im, valid_label)
   test_im, test_label = shuffle (test_im, test_label)
 
-  process_TFR(train_im, train_label, 'train_12')
-  process_TFR(valid_im, valid_label, 'valid_12')
-  process_TFR(test_im, test_label, 'test_12')
+  process_TFR(train_im, train_label, 'train')
+  process_TFR(valid_im, valid_label, 'valid')
+  process_TFR(test_im, test_label, 'test')
 
 if __name__ == "__main__":
   main()
