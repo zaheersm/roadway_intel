@@ -6,9 +6,9 @@ import os.path
 import tensorflow as tf
 
 train_dir = 'data/car_type'
-TRAIN_FILE = 'train_test.tfrecords'
-VALIDATION_FILE = 'valid_test.tfrecords'
-TEST_FILE = 'test_test.tfrecords'
+TRAIN_FILE = 'train_os.tfrecords'
+VALIDATION_FILE = 'valid_os.tfrecords'
+TEST_FILE = 'test_os.tfrecords'
 
 IMAGE_SIZE = 224
 IMAGE_SIZE_CROPPED = 168 # 224 x 0.75 = 168
@@ -77,7 +77,7 @@ def inputs(train, batch_size, num_epochs):
     # (Internally uses a RandomShuffleQueue.)
     # We run this in two threads to avoid being a bottleneck.
     images, sparse_labels = tf.train.shuffle_batch(
-        [image, label], batch_size=batch_size, num_threads=2,
+        [image, label], batch_size=batch_size, num_threads=64,
         capacity=1000 + 3 * batch_size,
         # Ensures a minimum amount of shuffling of examples.
         min_after_dequeue=1000)
@@ -132,7 +132,7 @@ def distorted_inputs(train, batch_size, num_epochs):
     # (Internally uses a RandomShuffleQueue.)
     # We run this in two threads to avoid being a bottleneck.
     distorted_images, sparse_labels = tf.train.shuffle_batch(
-        [distorted_image, label], batch_size=batch_size, num_threads=2,
+        [distorted_image, label], batch_size=batch_size, num_threads=64,
         capacity=1000 + 3 * batch_size,
         # Ensures a minimum amount of shuffling of examples.
         min_after_dequeue=1000)

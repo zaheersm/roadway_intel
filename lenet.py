@@ -15,7 +15,7 @@ import input
 
 batch_size = 20
 
-IMAGE_SIZE = (224, 224, 3)
+IMAGE_SIZE = (168, 168, 3)
 NUM_CLASSES = 12
 
 
@@ -113,7 +113,7 @@ def train(loss, learning_rate, optimizer='sgd'):
     train_op: op for training
   """
   if optimizer == 'adam':
-    print ('Using Adam Optimizer with LR %.2f' % learning_rate)
+    print ('Using Adam Optimizer with LR %.5f' % learning_rate)
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
                                         beta1=0.9,
                                         beta2=0.999,
