@@ -46,7 +46,8 @@ def eval():
     # To restore the latest checkpoint for evaluation
     saver = tf.train.Saver(tf.trainable_variables())
 
-    init = tf.initialize_all_variables()
+    init = tf.group(tf.initialize_all_variables(),
+                    tf.initialize_local_variables())
     # Create a session for running operations in the Graph.
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
     sess.run(init)

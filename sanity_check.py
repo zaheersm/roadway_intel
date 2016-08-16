@@ -9,10 +9,13 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 
-train_dir = 'cars_dataset'
-TRAIN_FILE = 'train_test.tfrecords'
-VALIDATION_FILE = 'valid.tfrecords'
+import input
 
+train_dir = 'data/car_type'
+TRAIN_FILE = 'train_test.tfrecords'
+VALIDATION_FILE = 'valid_test.tfrecords'
+
+IMAGE_SIZE = 224
 def read_and_decode(filename_queue):
   reader = tf.TFRecordReader()
   _, serialized_example = reader.read(filename_queue)
@@ -24,29 +27,37 @@ def read_and_decode(filename_queue):
       })
 
   image = tf.decode_raw(features['image_raw'], tf.float32)
-  image = tf.reshape(image, tf.pack([3, 224, 224]))
-  image.set_shape([3,224,224])
+  image = tf.reshape(image, tf.pack([IMAGE_SIZE, IMAGE_SIZE, 3]))
+  image.set_shape([IMAGE_SIZE, IMAGE_SIZE, 3])
+  image = tf.cast(image, tf.float32)
   label = tf.cast(features['label'], tf.int32)
 
   return image, label
 
 def main():
   with tf.Session() as sess:
-    filename = os.path.join(train_dir, TRAIN_FILE)
-    filename_queue = tf.train.string_input_producer([filename])
-    image, label = read_and_decode(filename_queue)
-    image.set_shape([3, 224, 224])
+    #filename = os.path.join(train_dir, TRAIN_FILE)
+    #filename_queue = tf.train.string_input_producer([filename])
+    image, label = input.distorted_inputs(False, 1, 4)
+    image  = (image + 0.5) * 255
     init_op = tf.initialize_all_variables()
     sess.run(init_op)
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
-    for i in range(10):
-      im, l = sess.run([image, label])
-      im = np.swapaxes(np.swapaxes(im, 1, 0), 2, 1)
-      im = im.astype('uint8')
-      im = Image.fromarray(im, 'RGB')
-      im.save('samples/' + TRAIN_FILE.split('.')[0] + '_' + str(i) + '_' + str(l) + '.png')
-    coord.request_stop()
+    try:
+      i = 0
+      while not coord.should_stop():
+        im, l = sess.run([image, label])
+        im = im[0].astype('uint8')
+        im = Image.fromarray(im, 'RGB')
+        im.save('samples/d_' + str(i) + '_' + str(l[0]) + '.png')
+        i+=1
+    except tf.errors.OutOfRangeError:
+      print ('Sanity Check complete')
+    except Exception as e:
+      print (str(e))
+    finally:
+      coord.request_stop()
     coord.join(threads)
 
 if __name__ == '__main__':

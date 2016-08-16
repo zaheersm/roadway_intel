@@ -13,7 +13,7 @@ import lenet
 import input
 
 # Defining basic model parameters
-learning_rate = 0.0001
+learning_rate = 0.00003
 num_epochs = 1
 batch_size = 20
 checkpoint_dir = 'checkpoints'
@@ -24,8 +24,9 @@ def run_training():
   with tf.Graph().as_default():
     # Input images and labels.
     with tf.device('/gpu:2'):
-      images, labels = input.inputs(train=True, batch_size=batch_size,
-                              num_epochs=num_epochs)
+      images, labels = input.distorted_inputs(train=True,
+                                              batch_size=batch_size,
+                                              num_epochs=1)
       # Build a Graph that computes predictions from the inference model.
       logits = lenet.inference(images)
 
@@ -35,8 +36,8 @@ def run_training():
       # Add to the Graph operations that train the model.
       train_op = lenet.train(loss, learning_rate, 'adam')
 
-      # The op for initializing the variables.
-      init_op = tf.group(tf.initialize_all_variables(),
+    # The op for initializing the variables.
+    init_op = tf.group(tf.initialize_all_variables(),
                          tf.initialize_local_variables())
     
     saver = tf.train.Saver(tf.trainable_variables())
