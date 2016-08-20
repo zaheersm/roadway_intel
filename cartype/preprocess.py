@@ -45,10 +45,12 @@ import progressbar
 
 import tensorflow as tf
 
-root = 'data/car_type'
-images = 'data/image'
-labels = 'data/label'
-attributes = 'data/misc/attributes.txt'
+from context import settings
+
+root = os.path.join(settings.DATA_ROOT, 'car_type')
+images = os.path.join(settings.DATA_ROOT, 'image')
+labels = os.path.join(settings.DATA_ROOT, 'label')
+attributes = os.path.join(settings.DATA_ROOT, 'misc/attributes.txt')
 
 no_classes = 12
 OVERSAMPLING = False
@@ -248,7 +250,7 @@ def process_TFR(images, labels, name):
 
 def main():
   # Copying data from data/images to data/car_types/ as per the car types
-  #copy()
+  copy()
 
   class_images = [None] * no_classes
   class_images_train = [None] * no_classes
@@ -282,7 +284,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-
-
-
-
