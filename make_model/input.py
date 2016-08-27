@@ -32,7 +32,11 @@ def read_image(input_queue):
 
 def inputs(train, batch_size=10, num_epochs=None):
   with tf.name_scope('input'):
-    images, labels = read_imagefile_label(settings.FILENAME_LABEL)
+    if train == True:
+      images, labels = read_imagefile_label(settings.TRAIN_META)
+    else:
+      images, labels = read_imagefile_label(settings.VALID_META)
+
     images = tf.convert_to_tensor(images, dtype=tf.string)
     labels = tf.convert_to_tensor(labels, dtype=tf.int32)
     
@@ -41,16 +45,14 @@ def inputs(train, batch_size=10, num_epochs=None):
                                                 shuffle=True)
     image, label = read_image(input_queue)
     # TODO: Improve this resize method since it downgrades the quality
-    image = tf.image.resize_images(image, 112, 112, 
+    image = tf.image.resize_images(image, 112, 112,
                                    tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-    print (image)
-    print (label)
+
     # Convert from [0, 255] -> [-0.5, 0.5] floats
     image = image * (1. /255) - 0.5
     images, sparse_labels = tf.train.shuffle_batch([image, label], 
                                                   batch_size=batch_size,
                                                   num_threads=64,
-                                                  capacity=1000 + 3 * batch_size,
+                                                  capacity=1000+3*batch_size,
                                                   min_after_dequeue=1000)
-    return images, sparse_labels                             
-    
+    return images, sparse_labels
