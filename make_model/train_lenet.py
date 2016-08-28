@@ -71,7 +71,7 @@ def run_training():
                                                     duration))
         if step % 50 == 0:
           checkpoint_path = os.path.join('checkpoints','model.ckpt')
-          saver.save(sess, checkpoint_path,global_step=step)
+          saver.save(sess, checkpoint_path, global_step=step)
     except tf.errors.OutOfRangeError:
       print ('tf.errors.OutOfRangeError')
     finally:
