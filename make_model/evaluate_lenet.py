@@ -15,7 +15,7 @@ from context import settings
 import lenet
 import input
 
-batch_size = 10
+BATCH_SIZE=20
 checkpoint_dir = 'checkpoints'
 
 def eval():
@@ -25,7 +25,7 @@ def eval():
     
     # Input images and labels.
     with tf.device('/gpu:1'):
-      images, labels = input.inputs(train=False, batch_size=batch_size,
+      images, labels = input.inputs(train=False, batch_size=BATCH_SIZE
                               num_epochs=1)
       # Build a Graph that computes predictions from the inference model.
       logits = lenet.inference(images)
@@ -54,8 +54,7 @@ def eval():
       global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
     else:
       print('No checkpoint file found')
-      return
-    
+      sys.exit(-1) 
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     step = 0
@@ -68,7 +67,7 @@ def eval():
         predictions, loss_value, labels_value = sess.run([top_k_op, loss, labels])
         #analyze(predictions, labels_value)
         true_count += np.sum(predictions)
-        total_count += batch_size
+        total_count += BATCH_SIZE
         total_loss+=loss_value
         step += 1
     except tf.errors.OutOfRangeError:

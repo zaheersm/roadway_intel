@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
+import skimage.transform
+import numpy as np
 
 from context import settings
 
@@ -30,6 +32,18 @@ def read_image(input_queue):
   l = input_queue[1]
   return im, l
 
+def resize(im):
+  # Resize so smallest dim = 256, preserving aspect ratio
+  h, w, _ = im.shape
+  if h < w:
+    im = skimage.transform.resize(im, (256, w*256/h), preserve_range=True)
+  else:
+    im = skimage.transform.resize(im, (h*256/w, 256), preserve_range=True)
+  # Central crop to 224x224
+  h, w, _ = im.shape
+  im = im[h//2-112:h//2+112, w//2-112:w//2+112]
+  return im.astype(np.float32)
+
 def inputs(train, batch_size=10, num_epochs=None):
   with tf.name_scope('input'):
     if train == True:
@@ -44,9 +58,13 @@ def inputs(train, batch_size=10, num_epochs=None):
                                                 num_epochs=num_epochs,
                                                 shuffle=True)
     image, label = read_image(input_queue)
-    # TODO: Improve this resize method since it downgrades the quality
-    image = tf.image.resize_images(image, 224, 224,
-                                   tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    #image = tf.image.resize_images(image, 224, 224,
+    #                               tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    #image = tf.image.resize_image_with_crop_or_pad(image, 224, 224)
+    image = tf.py_func(resize, [image], [tf.float32])[0]
+    # Spits out error if I don't explicitly set shape
+    # There should be more natural way to it
+    image.set_shape((224,224,3))
 
     mean = tf.constant([123.86, 116.779, 103.939], 
                         dtype=tf.float32, 

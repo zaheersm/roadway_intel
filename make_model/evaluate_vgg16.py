@@ -15,7 +15,7 @@ from context import settings
 import vgg16
 import input
 
-batch_size = 20
+batch_size = 50
 checkpoint_dir = 'checkpoints'
 
 def eval():
@@ -54,7 +54,7 @@ def eval():
       global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
     else:
       print('No checkpoint file found')
-      return
+      sys.exit(-1)
     
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)

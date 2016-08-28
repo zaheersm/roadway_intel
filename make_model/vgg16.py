@@ -11,7 +11,8 @@ import tensorflow as tf
 import input
 
 NO_CLASSES = 841
-
+checkpoint_dir = 'checkpoints'
+BATCH_SIZE=40
 def inference(images):
     
   # conv1_1
@@ -224,9 +225,10 @@ def train(loss):
   fcs = trainable_vars[26:30]
   softmax = trainable_vars[30:]
   # Ignoring Convs atm
-  train_op1 = tf.train.AdamOptimizer(0.00001).minimize(loss, var_list=softmax)
-  train_op2 = tf.train.AdamOptimizer(0.0000001).minimize(loss, var_list=fcs)
-  train_op3 = tf.train.AdamOptimizer(0.00000001).minimize(loss, var_list=convs[24:])
+  train_op1 = tf.train.GradientDescentOptimizer(0.0001).minimize(loss, var_list=softmax)
+  train_op2 = tf.train.GradientDescentOptimizer(0.000001).minimize(loss, var_list=fcs)
+  train_op3 = tf.train.GradientDescentOptimizer(0.0000001).minimize(loss,
+                                                var_list=convs[24:])
   train_op = tf.group(train_op1, train_op2, train_op3)
   #train_op = tf.train.AdamOptimizer(0.0001).minimize(loss)
   return train_op
@@ -244,8 +246,7 @@ def load_weights(weight_file, sess):
 
 if __name__ == '__main__':
 
-  images, labels = input.inputs(True, 20, 1)
-  print (images.get_shape)
+  images, labels = input.inputs(True, BATCH_SIZE, 1)
   logits = inference(images)
   loss = loss(logits, labels)
   train_op = train(loss)
@@ -254,7 +255,18 @@ if __name__ == '__main__':
   sess.run(tf.group(tf.initialize_all_variables(),
                     tf.initialize_local_variables()))
   saver = tf.train.Saver(tf.trainable_variables())
-  load_weights('vgg16_weights.npz', sess)
+
+
+  ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+  if ckpt and ckpt.model_checkpoint_path:
+    print ('Restoring from checkpoint %s' % ckpt.model_checkpoint_path)
+    saver.restore(sess, ckpt.model_checkpoint_path)
+    step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+  else:
+    print ('No checkpoint file found\nRestoring ImageNet '+\
+           'Pretrained: vgg16_weights.npz')
+    load_weights('vgg16_weights.npz', sess)
+
   coord = tf.train.Coordinator()
   threads = tf.train.start_queue_runners(sess=sess, coord=coord)
   step = 0
@@ -276,9 +288,10 @@ if __name__ == '__main__':
   except tf.errors.OutOfRangeError:
     print ('tf.errors.OutOfRangeError')
   finally:
+    checkpoint_path = os.path.join('checkpoints', 'model.ckpt')
+    saver.save(sess, checkpoint_path, global_step=step)
     print('Done training for %d steps.' % (step))
     # When done, ask the threads to stop.
     coord.request_stop()
   coord.join(threads)
   sess.close()
-  
