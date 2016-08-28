@@ -225,9 +225,9 @@ def train(loss):
   fcs = trainable_vars[26:30]
   softmax = trainable_vars[30:]
   # Ignoring Convs atm
-  train_op1 = tf.train.GradientDescentOptimizer(0.0001).minimize(loss, var_list=softmax)
-  train_op2 = tf.train.GradientDescentOptimizer(0.000001).minimize(loss, var_list=fcs)
-  train_op3 = tf.train.GradientDescentOptimizer(0.0000001).minimize(loss,
+  train_op1 = tf.train.GradientDescentOptimizer(0.001).minimize(loss, var_list=softmax)
+  train_op2 = tf.train.GradientDescentOptimizer(0.00001).minimize(loss, var_list=fcs)
+  train_op3 = tf.train.GradientDescentOptimizer(0.000001).minimize(loss,
                                                 var_list=convs[24:])
   train_op = tf.group(train_op1, train_op2, train_op3)
   #train_op = tf.train.AdamOptimizer(0.0001).minimize(loss)
