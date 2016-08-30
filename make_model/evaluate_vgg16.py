@@ -15,14 +15,13 @@ from context import settings
 import vgg16
 import input
 
-batch_size = 50
+batch_size = 40
 checkpoint_dir = 'checkpoints'
 
 def eval():
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
-    
     # Input images and labels.
     with tf.device('/gpu:1'):
       images, labels = input.inputs(train=False, batch_size=batch_size,
@@ -31,7 +30,7 @@ def eval():
       logits = vgg16.inference(images)
 
       # Add to the Graph the loss calculation.
-      loss = vgg16.loss(logits, labels)
+      loss = vgg16.loss_function(logits, labels)
       top_k_op = tf.nn.in_top_k(logits, labels, 5)
     
     # To restore the latest checkpoint for evaluation
