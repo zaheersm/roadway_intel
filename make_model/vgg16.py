@@ -13,6 +13,17 @@ import input
 NO_CLASSES = 841
 checkpoint_dir = 'checkpoints'
 BATCH_SIZE=40
+INITIAL_LR_SOFTMAX = 0.001
+INITIAL_LR_FC = 0.0001
+INITIAL_LR_CONV = 0.000001
+LR_DECAY_FACTOR = 0.0000001
+
+
+steps_per_epoch = 2060 # int (82660/ 40)
+# Factor of 3 since we have a separate minimize for softmax, FC and conv layers
+# Learning rate would be decayed after 5 epochs
+decay_steps = steps_per_epoch * 5 * 3
+
 def inference(images):
     
   # conv1_1
@@ -208,7 +219,7 @@ def inference(images):
   
   return fc3l
 
-def loss(logits, labels):
+def loss_function(logits, labels):
   labels = tf.cast(labels, tf.int64)
   cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
                   logits, labels, name='cross_entropy_per_example')
@@ -217,20 +228,43 @@ def loss(logits, labels):
 
   return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
-def train(loss):
+def train(loss, global_step):
 
   trainable_vars = tf.trainable_variables()
   
   convs = trainable_vars[:26]
   fcs = trainable_vars[26:30]
   softmax = trainable_vars[30:]
-  # Ignoring Convs atm
-  train_op1 = tf.train.GradientDescentOptimizer(0.001).minimize(loss, var_list=softmax)
-  train_op2 = tf.train.GradientDescentOptimizer(0.00001).minimize(loss, var_list=fcs)
-  train_op3 = tf.train.GradientDescentOptimizer(0.000001).minimize(loss,
-                                                var_list=convs[24:])
+  lr_softmax = (
+    tf.train.exponential_decay(INITIAL_LR_SOFTMAX, global_step, decay_steps,
+                              LR_DECAY_FACTOR, staircase=True)
+  )
+  lr_fc = (
+    tf.train.exponential_decay(INITIAL_LR_FC, global_step, decay_steps,
+                              LR_DECAY_FACTOR, staircase=True)
+  )
+  lr_conv = (
+    tf.train.exponential_decay(INITIAL_LR_CONV, global_step, decay_steps,
+                              LR_DECAY_FACTOR, staircase=True)
+  )
+
+  op1 = tf.train.GradientDescentOptimizer(lr_softmax)
+  op2 = tf.train.GradientDescentOptimizer(lr_fc)
+  op3 = tf.train.GradientDescentOptimizer(lr_conv)
+
+  grads = tf.gradients(loss, softmax + fcs + convs[24:])
+  softmax_grads = grads[:(len(softmax))]
+  fcs_grads = grads[len(softmax):len(softmax)+len(fcs)]
+  convs_grads  = grads[len(softmax)+len(fcs):]
+
+  train_op1 = op1.apply_gradients(zip(softmax_grads, softmax),
+                                  global_step=global_step)
+  train_op2 = op2.apply_gradients(zip(fcs_grads, fcs),
+                                  global_step=global_step)
+  train_op3 = op3.apply_gradients(zip(convs_grads, convs[24:]),
+                                  global_step=global_step)
+
   train_op = tf.group(train_op1, train_op2, train_op3)
-  #train_op = tf.train.AdamOptimizer(0.0001).minimize(loss)
   return train_op
 
 def load_weights(weight_file, sess):
@@ -244,54 +278,59 @@ def load_weights(weight_file, sess):
     print (i, k, np.shape(weights[k]))
     sess.run(parameters[i].assign(weights[k]))
 
-if __name__ == '__main__':
-
-  images, labels = input.inputs(True, BATCH_SIZE, 1)
-  logits = inference(images)
-  loss = loss(logits, labels)
-  train_op = train(loss)
+def run_training():
   
-  sess = tf.Session()
-  sess.run(tf.group(tf.initialize_all_variables(),
-                    tf.initialize_local_variables()))
-  saver = tf.train.Saver(tf.trainable_variables())
+  with tf.Graph().as_default():
+    with tf.device('/gpu:0'):
+      global_step = tf.Variable(0, trainable=False)
+      images, labels = input.inputs(True, BATCH_SIZE, 20)
+      logits = inference(images)
+      loss = loss_function(logits, labels)
+      train_op = train(loss, global_step)
 
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+    sess.run(tf.group(tf.initialize_all_variables(),
+                      tf.initialize_local_variables()))
 
-  ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-  if ckpt and ckpt.model_checkpoint_path:
-    print ('Restoring from checkpoint %s' % ckpt.model_checkpoint_path)
-    saver.restore(sess, ckpt.model_checkpoint_path)
-    step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
-  else:
-    print ('No checkpoint file found\nRestoring ImageNet '+\
-           'Pretrained: vgg16_weights.npz')
-    load_weights('vgg16_weights.npz', sess)
+    saver = tf.train.Saver(tf.trainable_variables())
+    step = 0
+    ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+    if ckpt and ckpt.model_checkpoint_path:
+      print ('Restoring from checkpoint %s' % ckpt.model_checkpoint_path)
+      saver.restore(sess, ckpt.model_checkpoint_path)
+      step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+      #sess.run(global_step.assign(step))
+    else:
+      print ('No checkpoint file found\nRestoring ImageNet '+\
+             'Pretrained: vgg16_weights.npz')
+      load_weights('vgg16_weights.npz', sess)
 
-  coord = tf.train.Coordinator()
-  threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-  step = 0
-  print ('Training begins..')
-  try:
-    while not coord.should_stop():
-      start_time = time.time()
-      _, loss_value = sess.run([train_op, loss])
-      duration = time.time() - start_time
-      step += 1
-      if step % 20 == 0:
-        print('Step %d: loss = %.2f (%.3f sec)' % (step, 
-                                                   loss_value,
-                                                   duration))
-      if step % 1000 == 0:
-        print ('Saving Model')
-        checkpoint_path = os.path.join('checkpoints', 'model.ckpt')
-        saver.save(sess, checkpoint_path, global_step=step)
-  except tf.errors.OutOfRangeError:
-    print ('tf.errors.OutOfRangeError')
-  finally:
-    checkpoint_path = os.path.join('checkpoints', 'model.ckpt')
-    saver.save(sess, checkpoint_path, global_step=step)
-    print('Done training for %d steps.' % (step))
-    # When done, ask the threads to stop.
-    coord.request_stop()
-  coord.join(threads)
-  sess.close()
+    coord = tf.train.Coordinator()
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    print ('Training begins..')
+    try:
+      while not coord.should_stop():
+        start_time = time.time()
+        _, loss_value = sess.run([train_op, loss])
+        duration = time.time() - start_time
+        step += 1
+        if step % 20 == 0:
+          print('Step %d: loss = %.2f (%.3f sec)' % (step,
+                                                     loss_value,
+                                                     duration))
+        # 1 - Epoch
+        if step % 2060 == 0:
+          print ('Saving Model')
+          checkpoint_path = os.path.join('checkpoints', 'model.ckpt')
+          saver.save(sess, checkpoint_path, global_step=step)
+    except tf.errors.OutOfRangeError:
+      print ('tf.errors.OutOfRangeError')
+    finally:
+      print('Done training for %d steps.' % (step))
+      # When done, ask the threads to stop.
+      coord.request_stop()
+    coord.join(threads)
+    sess.close()
+
+if __name__ == '__main__':
+  run_training()
