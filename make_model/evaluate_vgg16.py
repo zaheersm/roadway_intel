@@ -12,7 +12,7 @@ import tensorflow as tf
 
 from context import settings
 
-import vgg16
+import vgg16_multi_gpu as vgg16
 import input
 
 batch_size = 40
@@ -23,11 +23,11 @@ def eval():
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Input images and labels.
-    with tf.device('/gpu:1'):
+    with tf.device('/gpu:2'):
       images, labels = input.inputs(train=False, batch_size=batch_size,
                               num_epochs=1)
       # Build a Graph that computes predictions from the inference model.
-      logits = vgg16.inference(images)
+      logits = vgg16.inference(images, keep_prob=1.0)
 
       # Add to the Graph the loss calculation.
       loss = vgg16.loss_function(logits, labels)
