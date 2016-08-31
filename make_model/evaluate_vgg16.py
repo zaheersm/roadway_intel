@@ -23,7 +23,7 @@ def eval():
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Input images and labels.
-    with tf.device('/gpu:1'):
+    with tf.device('/gpu:2'):
       images, labels = input.inputs(train=False, batch_size=batch_size,
                               num_epochs=1)
       # Build a Graph that computes predictions from the inference model.

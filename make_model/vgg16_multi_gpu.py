@@ -12,17 +12,17 @@ import input
 
 NO_CLASSES = 841
 checkpoint_dir = 'checkpoints'
-BATCH_SIZE=5
-INITIAL_LR_SOFTMAX = 0.001
+BATCH_SIZE = 80
+INITIAL_LR_SOFTMAX = 0.0001
 INITIAL_LR_FC = 0.0001
 INITIAL_LR_CONV = 0.0001
 LR_DECAY_FACTOR = 0.1
 
 
-steps_per_epoch = 2060 # int (82660/ 40)
+steps_per_epoch = 1030 # int (82660/ 80)
 # Factor of 3 since we have a separate minimize for softmax, FC and conv layers
-# Learning rate would be decayed after 5 epochs
-decay_steps = steps_per_epoch * 5 * 3 * 3
+# Learning rate would be decayed after 3 epochs
+decay_steps = steps_per_epoch * 3 * 3
 
 def _variable_on_cpu(name, shape, initializer):
   """Helper to create a Variable stored on CPU memory
@@ -166,48 +166,6 @@ def loss_function(logits, labels):
     total_loss = tf.identity(total_loss)
   return total_loss
 
-def train(loss, global_step):
-
-  trainable_vars = tf.trainable_variables()
-  
-  convs = trainable_vars[:26]
-  fcs = trainable_vars[26:30]
-  softmax = trainable_vars[30:]
-  lr_softmax = (
-    tf.train.exponential_decay(INITIAL_LR_SOFTMAX, global_step, decay_steps,
-                              LR_DECAY_FACTOR, staircase=True)
-  )
-  lr_fc = (
-    tf.train.exponential_decay(INITIAL_LR_FC, global_step, decay_steps,
-                              LR_DECAY_FACTOR, staircase=True)
-  )
-  lr_conv = (
-    tf.train.exponential_decay(INITIAL_LR_CONV, global_step, decay_steps,
-                              LR_DECAY_FACTOR, staircase=True)
-  )
-
-  op1 = tf.train.GradientDescentOptimizer(lr_softmax)
-  op2 = tf.train.GradientDescentOptimizer(lr_fc)
-  op3 = tf.train.GradientDescentOptimizer(lr_conv)
-
-  grads = tf.gradients(loss, softmax + fcs + convs[24:])
-  softmax_grads = grads[:(len(softmax))]
-  fcs_grads = grads[len(softmax):len(softmax)+len(fcs)]
-  convs_grads  = grads[len(softmax)+len(fcs):]
-  
-  
-  train_op1 = op1.apply_gradients(zip(softmax_grads, softmax),
-                                  global_step=global_step)
-  train_op2 = op2.apply_gradients(zip(fcs_grads, fcs),
-                                  global_step=global_step)
-  train_op3 = op3.apply_gradients(zip(convs_grads, convs[24:]),
-                                  global_step=global_step)
-
-  train_op = tf.group(train_op1, train_op2, train_op3)
-  
-  return train_op
-  
-
 def load_weights(weight_file, sess):
   parameters = tf.trainable_variables()
   weights = np.load(weight_file)
@@ -277,12 +235,16 @@ def run_training():
     tower_fcs_grads = []
     tower_convs_grads = []
 
-    for i in xrange(3):
+    images, labels = input.inputs(True, BATCH_SIZE, 9)
+    split_images = tf.split(0, 2, images)
+    split_labels = tf.split(0, 2, labels)
+    loss = []
+    for i in xrange(2):
       with tf.device('/gpu:%d' % i):
         with tf.name_scope('%s_%d' % ('tower',i)) as scope:
           images, labels = input.inputs(True, BATCH_SIZE, 20)
-          logits = inference(images)
-          loss = loss_function(logits, labels)
+          logits = inference(split_images[i])
+          loss.append(loss_function(logits, split_labels[i]))
 
           tf.get_variable_scope().reuse_variables()
 
@@ -290,11 +252,11 @@ def run_training():
           convs = trainable_vars[24:26]
           fcs = trainable_vars[26:30]
           softmax = trainable_vars[30:]
-          softmax_grads = op1.compute_gradients(loss, softmax)
+          softmax_grads = op1.compute_gradients(loss[i], softmax)
           tower_softmax_grads.append(softmax_grads)
-          fcs_grads = op2.compute_gradients(loss, fcs)
+          fcs_grads = op2.compute_gradients(loss[i], fcs)
           tower_fcs_grads.append(fcs_grads)
-          convs_grads = op3.compute_gradients(loss, convs)
+          convs_grads = op3.compute_gradients(loss[i], convs)
           tower_convs_grads.append(convs_grads)
 
     softmax_grads = average_gradients(tower_softmax_grads) 
@@ -306,7 +268,7 @@ def run_training():
     train_op3 = op3.apply_gradients(convs_grads, global_step=global_step)
 
     train_op = tf.group(train_op1, train_op2, train_op3)
-    
+
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
     sess.run(tf.group(tf.initialize_all_variables(),
                       tf.initialize_local_variables()))
@@ -318,7 +280,7 @@ def run_training():
       print ('Restoring from checkpoint %s' % ckpt.model_checkpoint_path)
       saver.restore(sess, ckpt.model_checkpoint_path)
       step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
-      #sess.run(global_step.assign(step))
+      sess.run(global_step.assign(step*3))
     else:
       print ('No checkpoint file found\nRestoring ImageNet '+\
              'Pretrained: vgg16_weights.npz')
@@ -330,15 +292,18 @@ def run_training():
     try:
       while not coord.should_stop():
         start_time = time.time()
-        _, loss_value = sess.run([train_op, loss])
+        _, loss_value, global_step_val = sess.run([train_op,
+                                                  loss[0],
+                                                  global_step])
         duration = time.time() - start_time
         step += 1
         if step % 20 == 0:
-          print('Step %d: loss = %.2f (%.3f sec)' % (step,
+          print('Step %d(%d): loss = %.2f (%.3f sec)' % (step,
+                                                     global_step_val,
                                                      loss_value,
                                                      duration))
         # 1 - Epoch
-        if step % 2060 == 0:
+        if step % 1030 == 0:
           print ('Saving Model')
           checkpoint_path = os.path.join('checkpoints', 'model.ckpt')
           saver.save(sess, checkpoint_path, global_step=step)
