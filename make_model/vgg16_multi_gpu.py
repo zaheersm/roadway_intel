@@ -22,7 +22,8 @@ LR_DECAY_FACTOR = 0.1
 steps_per_epoch = 1030 # int (82660/ 80)
 # Factor of 3 since we have a separate minimize for softmax, FC and conv layers
 # Learning rate would be decayed after 3 epochs
-decay_steps = steps_per_epoch * 3 * 3
+decay_epochs = 30
+decay_steps = steps_per_epoch * decay_epochs * 3
 
 def _variable_on_cpu(name, shape, initializer):
   """Helper to create a Variable stored on CPU memory
@@ -57,7 +58,7 @@ def _conv_layer(input, shape, strides, scope):
   out = tf.nn.bias_add(conv, biases)
   return tf.nn.relu(out, scope.name)
 
-def inference(images):
+def inference(images, keep_prob=1.0):
     
   # conv1_1
   with tf.variable_scope('conv1_1') as scope:
@@ -127,6 +128,7 @@ def inference(images):
                                   padding='SAME', name='pool4')
         
   # fc1
+  keep_prob = tf.constant(keep_prob)
   with tf.variable_scope('fc1') as scope:
     shape = int(np.prod(pool5.get_shape()[1:]))
     fc1w = _variable_with_weight_decay('weights', shape=[shape, 4096],
@@ -135,14 +137,17 @@ def inference(images):
     pool5_flat = tf.reshape(pool5, [-1, shape])
     fc1l = tf.nn.bias_add(tf.matmul(pool5_flat, fc1w), fc1b)
     fc1 = tf.nn.relu(fc1l)
+    fc1_drop = tf.nn.dropout(fc1, keep_prob)
+
   
   # fc2
   with tf.variable_scope('fc2') as scope:
     fc2w = _variable_with_weight_decay('weights', shape=[4096, 4096],
                                         stddev=1e-1, wd=0.0) 
     fc2b = _variable_on_cpu('biases', [4096], tf.constant_initializer(1.0))
-    fc2l = tf.nn.bias_add(tf.matmul(fc1, fc2w), fc2b)
+    fc2l = tf.nn.bias_add(tf.matmul(fc1_drop, fc2w), fc2b)
     fc2 = tf.nn.relu(fc2l)
+    fc2_drop = tf.nn.dropout(fc2, keep_prob)
 
   # fc3
   with tf.variable_scope('fc3') as scope:
@@ -243,7 +248,7 @@ def run_training():
       with tf.device('/gpu:%d' % i):
         with tf.name_scope('%s_%d' % ('tower',i)) as scope:
           images, labels = input.inputs(True, BATCH_SIZE, 20)
-          logits = inference(split_images[i])
+          logits = inference(split_images[i], 0.5)
           loss.append(loss_function(logits, split_labels[i]))
 
           tf.get_variable_scope().reuse_variables()
