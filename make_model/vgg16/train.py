@@ -1,6 +1,6 @@
-#!/home/zaheer/anaconda2/bin/python
-from __future__ import print_function
+from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
 
 import os
 import sys
@@ -11,27 +11,12 @@ import tensorflow as tf
 
 import input
 
-#NO_CLASSES = 841
-#checkpoint_dir = 'checkpoints'
-#BATCH_SIZE = 70
-#NUM_EPOCHS = 90
-#INITIAL_LR_SOFTMAX = 0.0001
-#INITIAL_LR_FC = 0.0001
-#INITIAL_LR_CONV = 0.0001
-#LR_DECAY_FACTOR = 0.1
-
-
-steps_per_epoch = 1180 # int (82660/70)
-# Factor of 3 since we have a separate minimize for softmax, FC and conv layers
-# Learning rate would be decayed after 3 epochs
-decay_epochs = 100
-decay_steps = steps_per_epoch * decay_epochs * 3
-
 def _variable_on_cpu(name, shape, initializer):
   """Helper to create a Variable stored on CPU memory
   """
   with tf.device('/cpu:0'):
-    var = tf.get_variable(name, shape, initializer=initializer, dtype=tf.float32)
+    var = tf.get_variable(name, shape, initializer=initializer,
+			  dtype=tf.float32)
   return var
 
 def _variable_with_weight_decay(name, shape, stddev, wd):
@@ -155,7 +140,8 @@ def inference(images, no_classes, keep_prob=1.0):
   with tf.variable_scope('fc3') as scope:
     fc3w = _variable_with_weight_decay('weights', shape=[4096, no_classes],
                                         stddev=1e-1, wd=0.0)
-    fc3b = _variable_on_cpu('biases', [no_classes], tf.constant_initializer(1.0))            
+    fc3b = _variable_on_cpu('biases', [no_classes],
+                            tf.constant_initializer(1.0))
     # fc3l -> softmax_linear
     fc3l = tf.nn.bias_add(tf.matmul(fc2, fc3w), fc3b)
   
@@ -194,7 +180,6 @@ def _get_learning_rate(base_learning_rate, global_step,
 
 def average_gradients(tower_grads):
   """Calculate the average gradient for each shared variable across all towers.
-
   Note that this function provides a synchronization point across all towers.
 
   Args:
@@ -308,7 +293,6 @@ def run_training(no_classes, batch_size, epochs, steps_per_epoch,
 
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    print ('Training begins..')
     try:
       while not coord.should_stop():
         start_time = time.time()
@@ -335,6 +319,3 @@ def run_training(no_classes, batch_size, epochs, steps_per_epoch,
       coord.request_stop()
     coord.join(threads)
     sess.close()
-
-if __name__ == '__main__':
-  run_training(841, 30, 0.0001, 1180*30*3, 0.1, 1,'checkpoints')

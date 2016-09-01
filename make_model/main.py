@@ -1,7 +1,9 @@
 import argparse
+import sys
 
 import metaprocessing
-import vgg16_multi_gpu as vgg
+import vgg16.train as train
+import vgg16.evaluate as evaluate
 
 def main():
   parser = argparse.ArgumentParser('Fine tunes a VGG16 classification ' + \
@@ -30,18 +32,45 @@ def main():
                       help='Directory for storing/loading model weights')
   parser.add_argument('--output_file', default='out.txt',
                       help='File to write output')
+  parser.add_argument('--setup_meta', action='store_true',
+                      help='Generate meta files for train/valid/test split')
 
   args = parser.parse_args()
-  
-  if args.tra
-  #no_classes, no_train, _, _ = metaprocessing.setup_meta()
-  #steps_per_epoch = no_train/args.batch_size
-  #decay_steps = args.decay_epochs * steps_per_epoch
-  
-  """
-  vgg.run_training(no_classes, args.batch_size, args.epochs, steps_per_epoch
-                   args.base_learning_rate, decay_steps,
-                   args.decay_factor, args.no_gpus, 'checkpoints')
-  """
+
+  orig_stdout = sys.stdout
+  f = open(args.output_file, 'w',0)
+  sys.stdout = f
+
+  try:
+    if args.setup_meta:
+      no_classes, no_train, _, _ = metaprocessing.setup_meta()
+    else:
+      # TODO: READ these from already present meta-file
+      no_classes = 841
+      no_train = 82660
+
+    if args.training == True:
+      print ('Training')
+      steps_per_epoch = no_train/args.batch_size
+      decay_steps = args.decay_epochs * steps_per_epoch
+
+      print ('Configuration:\nNO_CLASSES: %d\nBATCH_SIZE: %d\nEPOCHS: %d\n'\
+             'STEPS_PER_EPOCH: %d\nBASE_LEARNING_RATE: %f\nDECAY_STEPS: %d\n'\
+             'DECAY_FACTOR: %.2f\nNO_GPUS: %d\nCHECKPOINT_DIR: %s\n' %
+             (no_classes, args.batch_size, args.epochs, steps_per_epoch,
+              args.base_learning_rate, decay_steps, args.decay_factor,
+              args.no_gpus, args.checkpoint_dir))
+
+      train.run_training(no_classes, args.batch_size, args.epochs,
+                         steps_per_epoch, args.base_learning_rate,
+                         decay_steps, args.decay_factor, args.no_gpus,
+                         args.checkpoint_dir)
+    else:
+      print ('Evaluating')
+      evaluate.run_evaluation(no_classes, args.batch_size, 'checkpoints')
+  finally:
+    sys.stdout = orig_stdout
+    f.close()
+
 if __name__ == '__main__':
   main()
