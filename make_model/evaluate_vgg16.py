@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -27,7 +26,7 @@ def eval():
       images, labels = input.inputs(train=False, batch_size=batch_size,
                               num_epochs=1)
       # Build a Graph that computes predictions from the inference model.
-      logits = vgg16.inference(images, keep_prob=1.0)
+      logits = vgg16.inference(images, 841, keep_prob=1.0)
 
       # Add to the Graph the loss calculation.
       loss = vgg16.loss_function(logits, labels)
