@@ -1,37 +1,33 @@
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import os
-import time
 import sys
+import time
 
 import numpy as np
 import tensorflow as tf
 
 from context import settings
 
-import vgg16_multi_gpu as vgg16
+import vgg16.train as train
 import input
 
-batch_size = 40
-checkpoint_dir = 'checkpoints'
-
-def eval():
+def run_evaluation(no_classes, batch_size, checkpoint_dir, k=5,gpu_id=2):
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Input images and labels.
-    with tf.device('/gpu:2'):
+    with tf.device('/gpu:%d' % gpu_id):
       images, labels = input.inputs(train=False, batch_size=batch_size,
                               num_epochs=1)
       # Build a Graph that computes predictions from the inference model.
-      logits = vgg16.inference(images, keep_prob=1.0)
+      logits = train.inference(images, no_classes, keep_prob=1.0)
 
       # Add to the Graph the loss calculation.
-      loss = vgg16.loss_function(logits, labels)
-      top_k_op = tf.nn.in_top_k(logits, labels, 5)
+      loss = train.loss_function(logits, labels)
+      top_k_op = tf.nn.in_top_k(logits, labels, k)
     
     # To restore the latest checkpoint for evaluation
     saver = tf.train.Saver(tf.trainable_variables())
@@ -45,7 +41,7 @@ def eval():
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
     if ckpt and ckpt.model_checkpoint_path:
       # Restores from checkpoint
-      print ('Evaluating: %s' % ckpt.model_checkpoint_path)
+      print ('Checkpoint: %s' % ckpt.model_checkpoint_path)
       saver.restore(sess, ckpt.model_checkpoint_path)
       # Assuming model_checkpoint_path looks something like:
       #   /my-favorite-path/cifar10_train/model.ckpt-0,
@@ -82,12 +78,7 @@ def eval():
     # Wait for threads to finish.
     coord.join(threads)
     sess.close()
-    return total_loss/step
 
-def main():
-  loss = eval()
-  print ('Eval loss: %.2f' % loss)
-
-if __name__ == '__main__':
-  main()
-
+    avg_loss = total_loss/step
+    print ('Eval loss: %.2f' % avg_loss)
+    return avg_loss

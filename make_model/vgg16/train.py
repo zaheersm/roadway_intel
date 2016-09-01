@@ -1,6 +1,6 @@
-#!/home/zaheer/anaconda2/bin/python
-from __future__ import print_function
+from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
 
 import os
 import sys
@@ -11,27 +11,12 @@ import tensorflow as tf
 
 import input
 
-NO_CLASSES = 841
-checkpoint_dir = 'checkpoints'
-BATCH_SIZE = 70
-NUM_EPOCHS = 90
-INITIAL_LR_SOFTMAX = 0.0001
-INITIAL_LR_FC = 0.0001
-INITIAL_LR_CONV = 0.0001
-LR_DECAY_FACTOR = 0.1
-
-
-steps_per_epoch = 1180 # int (82660/70)
-# Factor of 3 since we have a separate minimize for softmax, FC and conv layers
-# Learning rate would be decayed after 3 epochs
-decay_epochs = 100
-decay_steps = steps_per_epoch * decay_epochs * 3
-
 def _variable_on_cpu(name, shape, initializer):
   """Helper to create a Variable stored on CPU memory
   """
   with tf.device('/cpu:0'):
-    var = tf.get_variable(name, shape, initializer=initializer, dtype=tf.float32)
+    var = tf.get_variable(name, shape, initializer=initializer,
+			  dtype=tf.float32)
   return var
 
 def _variable_with_weight_decay(name, shape, stddev, wd):
@@ -60,7 +45,7 @@ def _conv_layer(input, shape, strides, scope):
   out = tf.nn.bias_add(conv, biases)
   return tf.nn.relu(out, scope.name)
 
-def inference(images, keep_prob=1.0):
+def inference(images, no_classes, keep_prob=1.0):
     
   # conv1_1
   with tf.variable_scope('conv1_1') as scope:
@@ -153,9 +138,10 @@ def inference(images, keep_prob=1.0):
 
   # fc3
   with tf.variable_scope('fc3') as scope:
-    fc3w = _variable_with_weight_decay('weights', shape=[4096, NO_CLASSES],
+    fc3w = _variable_with_weight_decay('weights', shape=[4096, no_classes],
                                         stddev=1e-1, wd=0.0)
-    fc3b = _variable_on_cpu('biases', [NO_CLASSES], tf.constant_initializer(1.0))            
+    fc3b = _variable_on_cpu('biases', [no_classes],
+                            tf.constant_initializer(1.0))
     # fc3l -> softmax_linear
     fc3l = tf.nn.bias_add(tf.matmul(fc2, fc3w), fc3b)
   
@@ -184,15 +170,16 @@ def load_weights(weight_file, sess):
     print (i, k, np.shape(weights[k]))
     sess.run(parameters[i].assign(weights[k]))
 
-def _get_learning_rate(INITIAL_LR, global_step):
+def _get_learning_rate(base_learning_rate, global_step,
+                       decay_steps, decay_factor):
   """ Helper to get learning_rate
   """
-  return tf.train.exponential_decay(INITIAL_LR, global_step, decay_steps,
-                            LR_DECAY_FACTOR, staircase=True)
+  return tf.train.exponential_decay(base_learning_rate, global_step,
+                                    decay_steps, decay_factor,
+                                    staircase=True)
 
 def average_gradients(tower_grads):
   """Calculate the average gradient for each shared variable across all towers.
-
   Note that this function provides a synchronization point across all towers.
 
   Args:
@@ -227,13 +214,24 @@ def average_gradients(tower_grads):
     average_grads.append(grad_and_var)
   return average_grads
 
-def run_training():
+def run_training(no_classes, batch_size, epochs, steps_per_epoch,
+                 base_learning_rate, decay_steps, decay_factor, 
+                 no_gpus, checkpoint_dir):
   
   with tf.Graph().as_default(), tf.device('/cpu:0'):
     global_step = tf.Variable(0, trainable=False)
-    lr_softmax = _get_learning_rate(INITIAL_LR_SOFTMAX, global_step)
-    lr_fc = _get_learning_rate(INITIAL_LR_FC, global_step)
-    lr_conv = _get_learning_rate(INITIAL_LR_CONV, global_step)
+    
+    
+    #Using the same learning rate for fine-tuning softmax, fcs and convs.
+    #Separate learning rate could be used by just plugging in the values
+    
+    decay_steps = decay_steps * 3
+    lr_softmax = _get_learning_rate(base_learning_rate, global_step,
+                                    decay_steps, decay_factor)
+    lr_fc = _get_learning_rate(base_learning_rate, global_step,
+                               decay_steps, decay_factor)
+    lr_conv = _get_learning_rate(base_learning_rate, global_step,
+                                 decay_steps, decay_factor)
     op1 = tf.train.GradientDescentOptimizer(lr_softmax)
     op2 = tf.train.GradientDescentOptimizer(lr_fc)
     op3 = tf.train.GradientDescentOptimizer(lr_conv)
@@ -242,15 +240,15 @@ def run_training():
     tower_fcs_grads = []
     tower_convs_grads = []
 
-    images, labels = input.inputs(True, BATCH_SIZE, NUM_EPOCHS)
-    split_images = tf.split(0, 2, images)
-    split_labels = tf.split(0, 2, labels)
+    images, labels = input.inputs(True, batch_size, epochs)
+    split_images = tf.split(0, no_gpus, images)
+    split_labels = tf.split(0, no_gpus, labels)
     loss = []
-    for i in xrange(2):
+    for i in xrange(no_gpus):
       with tf.device('/gpu:%d' % i):
         with tf.name_scope('%s_%d' % ('tower',i)) as scope:
-          images, labels = input.inputs(True, BATCH_SIZE, 20)
-          logits = inference(split_images[i], 0.5)
+          images, labels = input.inputs(True, batch_size, epochs)
+          logits = inference(split_images[i], no_classes, keep_prob=0.5)
           loss.append(loss_function(logits, split_labels[i]))
 
           tf.get_variable_scope().reuse_variables()
@@ -295,7 +293,6 @@ def run_training():
 
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    print ('Training begins..')
     try:
       while not coord.should_stop():
         start_time = time.time()
@@ -309,7 +306,7 @@ def run_training():
                                                      global_step_val,
                                                      loss_value,
                                                      duration))
-        # 1 - Epoch
+        # Epoch
         if step % steps_per_epoch == 0:
           print ('Saving Model')
           checkpoint_path = os.path.join('checkpoints', 'model.ckpt')
@@ -322,6 +319,3 @@ def run_training():
       coord.request_stop()
     coord.join(threads)
     sess.close()
-
-if __name__ == '__main__':
-  run_training()
