@@ -1,3 +1,4 @@
+#!/home/zaheer/anaconda2/bin/python
 from __future__ import print_function
 from __future__ import division
 
@@ -12,14 +13,15 @@ import input
 
 NO_CLASSES = 841
 checkpoint_dir = 'checkpoints'
-BATCH_SIZE = 80
+BATCH_SIZE = 70
+NUM_EPOCHS = 90
 INITIAL_LR_SOFTMAX = 0.0001
 INITIAL_LR_FC = 0.0001
 INITIAL_LR_CONV = 0.0001
 LR_DECAY_FACTOR = 0.1
 
 
-steps_per_epoch = 1030 # int (82660/ 80)
+steps_per_epoch = 1180 # int (82660/70)
 # Factor of 3 since we have a separate minimize for softmax, FC and conv layers
 # Learning rate would be decayed after 3 epochs
 decay_epochs = 30
@@ -240,7 +242,7 @@ def run_training():
     tower_fcs_grads = []
     tower_convs_grads = []
 
-    images, labels = input.inputs(True, BATCH_SIZE, 9)
+    images, labels = input.inputs(True, BATCH_SIZE, NUM_EPOCHS)
     split_images = tf.split(0, 2, images)
     split_labels = tf.split(0, 2, labels)
     loss = []
@@ -254,7 +256,7 @@ def run_training():
           tf.get_variable_scope().reuse_variables()
 
           trainable_vars = tf.trainable_variables()
-          convs = trainable_vars[24:26]
+          convs = trainable_vars[20:26]
           fcs = trainable_vars[26:30]
           softmax = trainable_vars[30:]
           softmax_grads = op1.compute_gradients(loss[i], softmax)
@@ -308,7 +310,7 @@ def run_training():
                                                      loss_value,
                                                      duration))
         # 1 - Epoch
-        if step % 1030 == 0:
+        if step % steps_per_epoch == 0:
           print ('Saving Model')
           checkpoint_path = os.path.join('checkpoints', 'model.ckpt')
           saver.save(sess, checkpoint_path, global_step=step)
