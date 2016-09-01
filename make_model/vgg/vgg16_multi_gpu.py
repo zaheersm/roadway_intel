@@ -21,11 +21,11 @@ import input
 #LR_DECAY_FACTOR = 0.1
 
 
-#steps_per_epoch = 1180 # int (82660/70)
+steps_per_epoch = 1180 # int (82660/70)
 # Factor of 3 since we have a separate minimize for softmax, FC and conv layers
 # Learning rate would be decayed after 3 epochs
-#decay_epochs = 30
-#decay_steps = steps_per_epoch * decay_epochs * 3
+decay_epochs = 100
+decay_steps = steps_per_epoch * decay_epochs * 3
 
 def _variable_on_cpu(name, shape, initializer):
   """Helper to create a Variable stored on CPU memory

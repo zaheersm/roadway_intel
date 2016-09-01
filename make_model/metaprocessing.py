@@ -109,21 +109,21 @@ def setup_meta():
   labels_test = labels_test[:N]
 
   # Writing Meta File for Training Data
-  f = open(settings.TRAIN_META + '.uni', 'w')
+  f = open(settings.TRAIN_META, 'w')
   for idx in range(len(imagefiles_train)):
     f.write('%s %d %d %d %d %d\n' % (imagefiles_train[idx], labels_train[idx],
                                      bboxs_train[idx][0], bboxs_train[idx][1],
                                      bboxs_train[idx][2], bboxs_train[idx][3]))
 
   # Writing Meta File for Valid Data
-  f = open(settings.VALID_META + '.uni', 'w')
+  f = open(settings.VALID_META, 'w')
   for idx in range(len(imagefiles_valid)):
     f.write('%s %d %d %d %d %d\n' % (imagefiles_valid[idx], labels_valid[idx],
                          bboxs_valid[idx][0], bboxs_valid[idx][1],
                          bboxs_valid[idx][2], bboxs_valid[idx][3]))
 
   # Writing Meta File for Test Data
-  f = open(settings.TEST_META + '.uni', 'w')
+  f = open(settings.TEST_META, 'w')
   for idx in range(len(imagefiles_test)):
     f.write('%s %d %d %d %d %d\n' % (imagefiles_test[idx], labels_test[idx],
                          bboxs_test[idx][0], bboxs_test[idx][1],
