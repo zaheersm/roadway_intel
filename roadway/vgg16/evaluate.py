@@ -9,10 +9,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from context import settings
-
-import vgg16.train as train
-import input
+import roadway as rd
 
 def run_evaluation(no_classes, batch_size, checkpoint_dir, k=5,gpu_id=2):
 
@@ -20,13 +17,13 @@ def run_evaluation(no_classes, batch_size, checkpoint_dir, k=5,gpu_id=2):
   with tf.Graph().as_default():
     # Input images and labels.
     with tf.device('/gpu:%d' % gpu_id):
-      images, labels = input.inputs(train=False, batch_size=batch_size,
-                              num_epochs=1)
+      images, labels = rd.input.inputs(train=False, batch_size=batch_size,
+                                       num_epochs=1)
       # Build a Graph that computes predictions from the inference model.
-      logits = train.inference(images, no_classes, keep_prob=1.0)
+      logits = rd.vgg16.model.inference(images, no_classes, keep_prob=1.0)
 
       # Add to the Graph the loss calculation.
-      loss = train.loss_function(logits, labels)
+      loss = rd.vgg16.model.loss_function(logits, labels)
       top_k_op = tf.nn.in_top_k(logits, labels, k)
     
     # To restore the latest checkpoint for evaluation

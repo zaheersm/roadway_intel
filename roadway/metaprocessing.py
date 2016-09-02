@@ -6,7 +6,7 @@ import os
 import numpy as np
 import sklearn.cross_validation
 
-from context import settings
+import settings
 
 def _get_bbox(img_path):
   """ Helper Method to retrieve bounding boxe for a given image file
@@ -136,5 +136,17 @@ def setup_meta():
   
   return no_models, len(imagefiles_train),\
          len(imagefiles_valid), len(imagefiles_test)
+
+def get_no_classes():
+  # Reading the training_meta file and determining the max label
+  labels = []
+  f = open(settings.TRAIN_META)
+  for line in f:
+    labels.append(int(line.split(" ")[1]))
+  return max(labels) + 1
+
+def get_no_training_samples():
+  return sum(1 for line in open(settings.TRAIN_META))
+
 if __name__ == '__main__':
   setup_meta()

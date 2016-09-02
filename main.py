@@ -1,11 +1,22 @@
 import argparse
 import sys
 
-import metaprocessing
-import vgg16.train as train
-import vgg16.evaluate as evaluate
+import settings
+import roadway as rd
+
+# Functions for redirecting and restoring stdout
+def _redirect_stdout(path):
+  orig_stdout = sys.stdout
+  f = open(path, 'w', 0)
+  sys.stdout = f
+  return orig_stdout, f
+
+def _restore_stdout(orig_stdout, f):
+  sys.stdout = orig_stdout
+  f.close()
 
 def main():
+
   parser = argparse.ArgumentParser('Fine tunes a VGG16 classification ' + \
                                     'model on CompCars dataset')
   group = parser.add_mutually_exclusive_group()
@@ -21,33 +32,31 @@ def main():
                       help='Learning Rate to be used for fine-tuning')
   parser.add_argument('--decay_factor', type=float, 
                       default=0.1, choices=[0.1, 0.01], 
-                      help='Factor by which learning rate should be decayed after'+\
-                      'every decay epochs')
+                      help='Learning rate to be decayed by decay_factor')
   parser.add_argument('--decay_epochs', type=int, default=30,
                       help='Learning rate to be decayed after every decay epochs')
   parser.add_argument('--no_gpus', type=int, default=1, choices=[1,2],
                       help='Number of GPUs to be used (Data Parallelism). ' + \
                       'no_gpu>2 is not tested')
-  parser.add_argument('--checkpoint_dir', default='checkpoints',
-                      help='Directory for storing/loading model weights')
-  parser.add_argument('--output_file', default='out.txt',
-                      help='File to write output')
   parser.add_argument('--setup_meta', action='store_true',
                       help='Generate meta files for train/valid/test split')
 
   args = parser.parse_args()
 
-  orig_stdout = sys.stdout
-  f = open(args.output_file, 'w',0)
-  sys.stdout = f
-
+  # Tensorflow blurts out tons of log messages
+  # Therefore, we will redirect stdout to file specified by
+  # settings.TRAINING_OUTPUT/settings.EVALUATION_OUTPUT
+  output_file = settings.TRAINING_OUTPUT if args.training\
+                                         else settings.EVALUATION_OUTPUT
+  orig_stdout, f = _redirect_stdout(output_file)
   try:
     if args.setup_meta:
-      no_classes, no_train, _, _ = metaprocessing.setup_meta()
+      # If you do this step, make sure your previous train/valid/test split
+      # metadatas are backed-up as this would overwrite it
+      no_classes, no_train, _, _ = rd.metaprocessing.setup_meta()
     else:
-      # TODO: READ these from already present meta-file
-      no_classes = 841
-      no_train = 82660
+      no_classes = rd.metaprocessing.get_no_classes()
+      no_train = rd.metaprocessing.get_no_training_samples()
 
     if args.training == True:
       print ('Training')
@@ -59,18 +68,19 @@ def main():
              'DECAY_FACTOR: %.2f\nNO_GPUS: %d\nCHECKPOINT_DIR: %s\n' %
              (no_classes, args.batch_size, args.epochs, steps_per_epoch,
               args.base_learning_rate, decay_steps, args.decay_factor,
-              args.no_gpus, args.checkpoint_dir))
+              args.no_gpus, settings.CHECKPOINT_DIR))
 
-      train.run_training(no_classes, args.batch_size, args.epochs,
-                         steps_per_epoch, args.base_learning_rate,
-                         decay_steps, args.decay_factor, args.no_gpus,
-                         args.checkpoint_dir)
+      rd.vgg16.train.run_training(no_classes, args.batch_size, args.epochs,
+                                  steps_per_epoch, args.base_learning_rate,
+                                  decay_steps, args.decay_factor, args.no_gpus,
+                                  settings.CHECKPOINT_DIR)
     else:
       print ('Evaluating')
-      evaluate.run_evaluation(no_classes, args.batch_size, 'checkpoints')
+      rd.vgg16.evaluate.run_evaluation(no_classes,
+                                       args.batch_size,
+                                       settings.CHECKPOINT_DIR)
   finally:
-    sys.stdout = orig_stdout
-    f.close()
+    _restore_stdout(orig_stdout, f)
 
 if __name__ == '__main__':
   main()

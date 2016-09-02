@@ -8,7 +8,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import input
+import roadway.input as input
 
 NO_CLASSES = 841
 checkpoint_dir = 'checkpoints'

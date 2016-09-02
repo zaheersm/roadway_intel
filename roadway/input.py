@@ -5,7 +5,8 @@ import tensorflow as tf
 import skimage.transform
 import numpy as np
 import sys
-from context import settings
+
+import settings
 
 def read_imagefile_label(imagefile_label):
   """Reads .txt files and returns lists of imagefiles paths and labels
