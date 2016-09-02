@@ -15,13 +15,13 @@ VGG16 model weights from [Caffe Model Zoo](https://github.com/BVLC/caffe/wiki/Mo
 ### Example Usage
 Make sure you've extracted CompCars dataset to PROJECT_ROOT/.
 #### Training:
-```python
-python -B main.py -t \-\-batch_size 40 \-\-epochs 100 \-\-base_learning_rate=0.0001
-\-\-decay_factor=0.1 \-\-decay_epochs=50 \-\-no_gpus=2
+```shell
+python -B main.py -t --batch_size 40 --epochs 100 --base_learning_rate=0.0001
+--decay_factor=0.1 --decay_epochs=50 --no_gpus=2
 ```
 #### Evaluation:
-```python
-python -B main.py -e \-\-batch_size 40
+```shell
+python -B main.py -e --batch_size 40
 ```
 
 #### Results
