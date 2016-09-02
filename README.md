@@ -25,7 +25,7 @@ python -B main.py -e --batch_size 40
 ```
 
 #### Results
-Accuracy: **86.2% top-5** after **48 epochs**
+Accuracy: **87.09% top-5** after **51 epochs**
 Conv5 (Conv5_1, Conv5_2, Conv5_3), FC6, FC7 and FC8 were fine-tuned with vanilla SGD.  
 Constant learning rate of 0.0001 and batch size of 70 were used.  
 
