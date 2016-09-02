@@ -21,7 +21,7 @@ python -B main.py -t `--`batch_size 40 `--`epochs 100 `--`base_learning_rate=0.0
 ```
 #### Evaluation:
 ```python
-python -B main.py -e --batch_size 40
+python -B main.py -e `--`batch_size 40
 ```
 
 #### Results
