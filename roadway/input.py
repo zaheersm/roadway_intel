@@ -59,7 +59,7 @@ def inputs(train, batch_size=10, num_epochs=None):
     if train == True:
       images, labels, bboxs = read_imagefile_label(settings.TRAIN_META)
     else:
-      images, labels, bboxs = read_imagefile_label(settings.VALID_META)
+      images, labels, bboxs = read_imagefile_label(settings.TEST_META)
 
     images = tf.convert_to_tensor(images, dtype=tf.string)
     labels = tf.convert_to_tensor(labels, dtype=tf.int32)
