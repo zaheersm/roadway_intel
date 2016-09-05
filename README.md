@@ -16,8 +16,8 @@ VGG16 model weights from [Caffe Model Zoo](https://github.com/BVLC/caffe/wiki/Mo
 Make sure you've extracted CompCars dataset to PROJECT_ROOT/.
 #### Training:
 ```shell
-python -B main.py -t --batch_size 40 --epochs 100 --base_learning_rate=0.0001
---decay_factor=0.1 --decay_epochs=50 --no_gpus=2
+python -B main.py -t --batch_size 40 --epochs 200 --base_learning_rate=0.0001
+--decay_factor=0.1 --decay_epochs=100 --no_gpus=2
 ```
 #### Evaluation:
 ```shell
@@ -25,9 +25,9 @@ python -B main.py -e --batch_size 40
 ```
 
 #### Results
-Accuracy: **87.23% top-5** after **52 epochs**
+Accuracy: **93.09% top-5** after **112 epochs**
 Conv5 (Conv5_1, Conv5_2, Conv5_3), FC6, FC7 and FC8 were fine-tuned with vanilla SGD.  
-Constant learning rate of 0.0001 and batch size of 70 were used.  
+Base learning rate of 0.0001 and batch size of 70 were used. 
 
 ### References
 [1] Linjie Yang, Ping Luo, Chen Change Loy, Xiaoou Tang. A Large-Scale Car Dataset for Fine-Grained Categorization and Verification, In Computer Vision and Pattern Recognition (CVPR), 2015.
