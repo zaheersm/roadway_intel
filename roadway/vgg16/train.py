@@ -80,7 +80,7 @@ def run_training(no_classes, batch_size, epochs, steps_per_epoch,
     tower_fcs_grads = []
     tower_convs_grads = []
 
-    images, labels = rd.input.inputs(True, batch_size, epochs)
+    images, labels = rd.input.distorted_inputs(True, batch_size, epochs)
     split_images = tf.split(0, no_gpus, images)
     split_labels = tf.split(0, no_gpus, labels)
     loss = []

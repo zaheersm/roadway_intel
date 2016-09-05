@@ -10,6 +10,9 @@ import numpy as np
 
 from context import settings
 
+IMAGE_SIZE=298
+IMAGE_SIZE_CROPPED=224
+
 def read_imagefile_label(imagefile_label):
   """Reads .txt files and returns lists of imagefiles paths and labels
   Args:
@@ -40,6 +43,7 @@ def read_image(input_queue):
   bbox = input_queue[2]
   return im, l, bbox
 
+"""
 def resize(im):
   # Resize so smallest dim = 256, preserving aspect ratio
   h, w, _ = im.shape
@@ -52,12 +56,25 @@ def resize(im):
   im = im[h//2-112:h//2+112, w//2-112:w//2+112]
   return im.astype(np.uint8)
 
+
+def resize(im, size=224):
+  # Resize so smallest dim = size+2, preserving aspect ratio
+  h, w, _ = im.shape
+  if h < w:
+    im = skimage.transform.resize(im, ((size+2), w*(size+2)/h), preserve_range=True)
+  else:
+    im = skimage.transform.resize(im, (h*(size+2)/w, (size+2)), preserve_range=True)
+  # Central crop to sizexsize
+  h, w, _ = im.shape
+  im = im[h//2-(size/2):h//2+(size/2), w//2-(size/2):w//2+(size/2)]
+  return im.astype(np.uint8)
+
 def crop_bbox(im, bbox):
   im = im [bbox[0]:bbox[0]+bbox[2], bbox[1]:bbox[1]+bbox[3]]
   return im
-
+"""
 with tf.Session() as s:
-  images, labels, bboxs = read_imagefile_label(settings.TRAIN_META + '.bb')
+  images, labels, bboxs = read_imagefile_label(settings.TRAIN_META)
 
   images = tf.convert_to_tensor(images, dtype=tf.string)
   labels = tf.convert_to_tensor(labels, dtype=tf.int32)
@@ -66,24 +83,39 @@ with tf.Session() as s:
                                               num_epochs=1,
                                               shuffle=False)
   image, label, bbox = read_image(input_queue)
-  #image = tf.image.crop_to_bounding_box(image, bbox[0], bbox[1],
-  #                                             bbox[2], bbox[2])
-  image = tf.py_func(crop_bbox, [image, bbox], [tf.uint8])[0]
-
-  #image = tf.image.resize_images(image, 224, 224,
-  #                               tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  #image = tf.py_func(crop_bbox, [image, bbox], [tf.uint8])[0]
+  image = tf.image.crop_to_bounding_box(image, bbox[0], bbox[1],
+                                               bbox[2], bbox[3])
+  image = tf.image.resize_images(image, IMAGE_SIZE, IMAGE_SIZE,
+                                 tf.image.ResizeMethod.NEAREST_NEIGHBOR)
   #image = tf.image.resize_image_with_crop_or_pad(image, 224, 224)
-  image = tf.py_func(resize, [image], [tf.uint8])[0]
+
+  #image = tf.py_func(resize, [image, IMAGE_SIZE], [tf.uint8])[0]
+
+  image = tf.random_crop(image, [IMAGE_SIZE_CROPPED,
+                                 IMAGE_SIZE_CROPPED, 3])
+  # Randomly flip the image horizontally.
+  image = tf.image.random_flip_left_right(image)
+
+  image = tf.image.random_brightness(image,
+                                    max_delta=0.5)
+  image = tf.image.random_contrast(image,
+                                   lower=0.7, upper=1.2)
+
   image = tf.cast(image, tf.float32)
+  image = tf.cast(image, tf.uint8)
   s.run(tf.initialize_all_variables())
   s.run(tf.initialize_local_variables())
   coord = tf.train.Coordinator()
   threads = tf.train.start_queue_runners(coord=coord)
-  sample_count = 10
-  for i in range (sample_count):
+  sample_count = 50
+  step = 0
+  for i in range (82660):
+    step+=1
     im, l = s.run([image, label])
-    print (im.shape)
-    im = Image.fromarray(im.astype(np.uint8), 'RGB')
-    im.save(os.path.join(settings.SAMPLES_DIR, str(l) + '.png'))
+    print (step)
+    #im = Image.fromarray(im.astype(np.uint8), 'RGB')
+    #im.save(os.path.join(os.path.join(settings.PROJECT_ROOT,'samples'),
+    #                    str(l) + '.png'))
   coord.request_stop()
   coord.join(threads)
