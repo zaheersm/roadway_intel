@@ -22,7 +22,7 @@ def main():
   group = parser.add_mutually_exclusive_group()
   group.add_argument("-t", "--training", action="store_true", help="Training")
   group.add_argument("-e", "--evaluation", action="store_true", help="Evaluation")
-  parser.add_argument('--batch_size', type=int, choices=[30,40,50,60,70],
+  parser.add_argument('--batch_size', type=int, choices=[20, 30,40,50,60,70, 80, 100],
                       default=30, help='Batch Size for training/eval. '+ \
                       'Rule of thumb: Batch of size ~30 for each GPU')
   parser.add_argument('--epochs', type=int, default=50,
@@ -57,7 +57,6 @@ def main():
     else:
       no_classes = rd.metaprocessing.get_no_classes()
       no_train = rd.metaprocessing.get_no_training_samples()
-
     if args.training == True:
       print ('Training')
       steps_per_epoch = no_train/args.batch_size

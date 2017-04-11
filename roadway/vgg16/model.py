@@ -20,7 +20,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
         name, shape, 
         tf.truncated_normal_initializer(stddev=stddev, dtype=tf.float32))
   if wd is not None:
-    weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
+    weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
   return var
 
@@ -144,7 +144,7 @@ def inference(images, no_classes, keep_prob=1.0):
 def loss_function(logits, labels):
   labels = tf.cast(labels, tf.int64)
   cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                  logits, labels, name='cross_entropy_per_example')
+                  logits=logits, labels=labels, name='cross_entropy_per_example')
   cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
   tf.add_to_collection('losses', cross_entropy_mean)
 

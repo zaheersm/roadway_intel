@@ -74,12 +74,14 @@ def inputs(train, batch_size=10, num_epochs=None):
                                                 shuffle=False)
     image, label, bbox = read_image(input_queue)
     #image = tf.py_func(crop_bbox, [image, bbox], [tf.uint8])[0]
-    image = tf.image.crop_to_bounding_box(image, bbox[0], bbox[1],
+    try:
+        image = tf.image.crop_to_bounding_box(image, bbox[0], bbox[1],
                                                  bbox[2], bbox[3])
-
+    except:
+        print ("\n\n",bbox[0], bbox[1], bbox[2], bbox[3],"\n\n")
     image = tf.image.resize_images(image,
-                                   IMAGE_SIZE_CROPPED,
-                                   IMAGE_SIZE_CROPPED,
+                                   [IMAGE_SIZE_CROPPED,
+                                   IMAGE_SIZE_CROPPED],
                                    tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     #image = tf.image.resize_image_with_crop_or_pad(image, 224, 224)
     #image = tf.py_func(resize, [image, IMAGE_SIZE_CROPPED], [tf.uint8])[0]
@@ -114,12 +116,16 @@ def distorted_inputs(train, batch_size=10, num_epochs=None):
                                                 shuffle=False)
     image, label, bbox = read_image(input_queue)
     #image = tf.py_func(crop_bbox, [image, bbox], [tf.uint8])[0]
-    image = tf.image.crop_to_bounding_box(image, bbox[0], bbox[1],
+    try:
+        image = tf.image.crop_to_bounding_box(image, bbox[0], bbox[1],
                                                  bbox[2], bbox[3])
-
+    except tf.errors.InvalidArgumentError:
+        print ("\n\n\n",bbox[0], bbox[1], bbox[2], bbox[3], "\n\n\n")
+    except:
+        print ("\n\n\n",bbox[0], bbox[1], bbox[2], bbox[3],"\n\n\n")
     image = tf.image.resize_images(image,
-                                   IMAGE_SIZE,
-                                   IMAGE_SIZE,
+                                   [IMAGE_SIZE,
+                                   IMAGE_SIZE],
                                    tf.image.ResizeMethod.NEAREST_NEIGHBOR)
     #image = tf.image.resize_image_with_crop_or_pad(image, 224, 224)
     #image = tf.py_func(resize, [image, IMAGE_SIZE_CROPPED], [tf.uint8])[0]

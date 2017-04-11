@@ -31,8 +31,10 @@ def run_evaluation(no_classes, batch_size, checkpoint_dir, k=5,gpu_id=2):
 
     init = tf.group(tf.initialize_all_variables(),
                     tf.initialize_local_variables())
+    
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
     # Create a session for running operations in the Graph.
-    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options))
     sess.run(init)
      
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)

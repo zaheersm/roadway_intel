@@ -66,7 +66,7 @@ def setup_meta():
         for image in image_files:
           imagefile = os.path.join(image_make_model_year, image)
           bbox = _get_bbox(imagefile)
-          if bbox[2] == 0 or bbox[3] == 0:
+          if bbox[2] <= 0 or bbox[3] <= 0:
             continue
           imagefiles.append(imagefile)
           bboxs.append(bbox)

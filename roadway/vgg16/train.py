@@ -43,7 +43,7 @@ def average_gradients(tower_grads):
       grads.append(expanded_g)
 
     # Average over the 'tower' dimension.
-    grad = tf.concat(0, grads)
+    grad = tf.concat(grads, 0)
     grad = tf.reduce_mean(grad, 0)
 
     # Keep in mind that the Variables are redundant because they are shared
@@ -81,8 +81,8 @@ def run_training(no_classes, batch_size, epochs, steps_per_epoch,
     tower_convs_grads = []
 
     images, labels = rd.input.distorted_inputs(True, batch_size, epochs)
-    split_images = tf.split(0, no_gpus, images)
-    split_labels = tf.split(0, no_gpus, labels)
+    split_images = tf.split(images, no_gpus, 0)
+    split_labels = tf.split(labels, no_gpus, 0)
     loss = []
     for i in xrange(no_gpus):
       with tf.device('/gpu:%d' % i):
@@ -113,8 +113,10 @@ def run_training(no_classes, batch_size, epochs, steps_per_epoch,
     train_op3 = op3.apply_gradients(convs_grads, global_step=global_step)
 
     train_op = tf.group(train_op1, train_op2, train_op3)
-
-    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+    
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, 
+                                            gpu_options=gpu_options))
     sess.run(tf.group(tf.initialize_all_variables(),
                       tf.initialize_local_variables()))
 
